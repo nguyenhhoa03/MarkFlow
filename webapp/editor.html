@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarkFlow Editor</title>
+    
+    <!-- Toast UI Editor CSS -->
+    <link rel="stylesheet" href="css/toastui-editor.min.css">
+    <link rel="stylesheet" href="css/codemirror.min.css">
+    <link rel="stylesheet" href="css/github.min.css">
+    <link rel="stylesheet" href="css/prism.min.css">
+
+    <style id="dynamic-theme">
+        /* Theme will be loaded dynamically */
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header Bar -->
+        <header class="header-bar">
+            <div class="header-left">
+                <div class="app-title">
+                    <span class="app-icon"> </span>
+                    <span class="app-name">MarkFlow</span>
+                </div>
+            </div>
+            
+            <div class="header-center">
+                <!-- <div class="toolbar-buttons">
+                </div> -->
+            </div>
+            
+            <div class="header-right">
+                <div class="toolbar-buttons">
+                    <button class="toolbar-btn" id="open-btn" title="Open File">
+                        <span class="btn-icon">📁</span>
+                        <span class="btn-text">Open</span>
+                    </button>
+                    
+                    <button class="toolbar-btn" id="save-btn" title="Save File">
+                        <span class="btn-icon">💾</span>
+                        <span class="btn-text">Save</span>
+                    </button>
+                    
+                    <button class="toolbar-btn" id="save-as-btn" title="Save As...">
+                        <span class="btn-icon">📤</span>
+                        <span class="btn-text">Save As...</span>
+                    </button>
+                </div>
+                
+                <div class="connection-status" id="connection-status">
+                    <span class="status-indicator online"></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Editor Area -->
+        <main class="main-content">
+            <div class="editor-container">
+                <div id="editor"></div>
+            </div>
+        </main>
+
+        <!-- Status Bar -->
+        <footer class="status-bar">
+            <div class="status-left">
+                <span class="status-item" id="word-count">Words: 0</span>
+                <span class="status-item" id="char-count">Characters: 0</span>
+            </div>
+            
+            <div class="status-center">
+                <span class="status-item" id="file-path">Untitled.md</span>
+            </div>
+            
+            <div class="status-right">
+                <span class="status-item" id="last-saved">Never saved</span>
+                <span class="status-item" id="cursor-position">Ln 1, Col 1</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading MarkFlow...</div>
+    </div>
+
+    <!-- Toast UI Editor and dependencies -->
+    <script src="js/highlight.min.js"></script>
+    <script src="js/prism-core.min.js"></script>
+    <script src="js/prism-autoloader.min.js"></script>
+
+    <!-- Toast UI Editor -->
+    <script src="js/toastui-editor-all.min.js"></script>
+
+    
+    <script>
+        // Initialize the application directly with correct Toast UI Editor
+        let editor = null;
+        let currentFilePath = null;
+        let isOnline = false;
+        let config = {
+            theme: 'Material3-green.css',
+            mode: 'auto',
+            autosave: true,
+            defaultExtension: '.md'
+        };
+
+        // Initialize the application
+        function initializeApp() {
+            loadConfig()
+                .then(() => {
+                    return loadTheme();
+                })
+                .then(() => {
+                    initializeEditor();
+                    setupEventListeners();
+                    checkBackendStatus();
+                    hideLoadingOverlay();
+                })
+                .catch(error => {
+                    console.error('Initialization error:', error);
+                    hideLoadingOverlay();
+                });
+        }
+
+        // Load Toast UI Editor when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if Toast UI Editor is available
+            if (typeof toastui !== 'undefined' && toastui.Editor) {
+                initializeApp();
+            } else {
+                // Wait a bit more for the script to load
+                setTimeout(() => {
+                    if (typeof toastui !== 'undefined' && toastui.Editor) {
+                        initializeApp();
+                    } else {
+                        console.error('Toast UI Editor failed to load');
+                        createFallbackEditor();
+                        initializeApp();
+                    }
+                }, 1000);
+            }
+        });
+
+        // Fallback editor creation
+        function createFallbackEditor() {
+            window.toastui = {
+                Editor: class {
+                    constructor(options) {
+                        this.container = options.el;
+                        this.initialValue = options.initialValue || '';
+                        this.createFallbackEditor();
+                    }
+                    
+                    createFallbackEditor() {
+                        this.container.innerHTML = `
+                            <div style="height: 100%; display: flex; flex-direction: column;">
+                                <div style="background: var(--surface-variant); padding: 8px; border-bottom: 1px solid var(--outline-variant); font-size: 14px; color: var(--on-surface-variant);">
+                                    ⚠️ Toast UI Editor not available - using fallback textarea
+                                </div>
+                                <textarea id="fallback-editor" style="flex: 1; border: none; outline: none; resize: none; padding: 16px; font-family: 'Roboto Mono', monospace; font-size: 14px; line-height: 1.5; background: var(--surface); color: var(--on-surface);" placeholder="Start typing your markdown here...">${this.initialValue}</textarea>
+                            </div>
+                        `;
+                        this.textarea = this.container.querySelector('#fallback-editor');
+                        this.textarea.addEventListener('input', () => {
+                            this.updateStats();
+                        });
+                    }
+                    
+                    getMarkdown() {
+                        return this.textarea ? this.textarea.value : this.initialValue;
+                    }
+                    
+                    setMarkdown(content) {
+                        if (this.textarea) {
+                            this.textarea.value = content;
+                            this.updateStats();
+                        }
+                        this.initialValue = content;
+                    }
+                    
+                    updateStats() {
+                        const content = this.getMarkdown();
+                        const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+                        const charCount = content.length;
+                        
+                        document.getElementById('word-count').textContent = `Words: ${wordCount}`;
+                        document.getElementById('char-count').textContent = `Characters: ${charCount}`;
+                    }
+                    
+                    destroy() {
+                        if (this.container) {
+                            this.container.innerHTML = '';
+                        }
+                    }
+                }
+            };
+        }
+
+        // Load configuration
+        async function loadConfig() {
+            try {
+                const response = await fetch('./config.json');
+                if (response.ok) {
+                    const loadedConfig = await response.json();
+                    config = { ...config, ...loadedConfig };
+                }
+            } catch (error) {
+                console.log('Using default config');
+            }
+        }
+
+        // Load theme
+        async function loadTheme() {
+            try {
+                const response = await fetch(`./css/${config.theme}`);
+                if (response.ok) {
+                    const css = await response.text();
+                    document.getElementById('dynamic-theme').textContent = css;
+                }
+            } catch (error) {
+                console.log('Theme not found, using default styles');
+            }
+            
+            // Apply theme mode
+            applyThemeMode();
+        }
+
+        // Apply theme mode (light/dark/auto)
+        function applyThemeMode() {
+            const body = document.body;
+            body.classList.remove('light-theme', 'dark-theme');
+            
+            if (config.mode === 'auto') {
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                body.classList.add(prefersDark ? 'dark-theme' : 'light-theme');
+            } else {
+                body.classList.add(`${config.mode}-theme`);
+            }
+        }
+
+        // Initialize the editor
+        function initializeEditor() {
+            const editorElement = document.getElementById('editor');
+            
+            if (typeof toastui !== 'undefined' && toastui.Editor) {
+                editor = new toastui.Editor({
+                    el: editorElement,
+                    height: '100%',
+                    initialEditType: 'wysiwyg',
+                    previewStyle: 'vertical',
+                    initialValue: '# Welcome to MarkFlow\n\nStart writing your markdown here...',
+                    placeholder: 'Start typing your markdown here...',
+                    hideModeSwitch: false,
+                    toolbarItems: [
+                        ['heading', 'bold', 'italic', 'strike'],
+                        ['hr', 'quote'],
+                        ['ul', 'ol', 'task', 'indent', 'outdent'],
+                        ['table', 'image', 'link'],
+                        ['code', 'codeblock'],
+                        ['scrollSync']
+                    ],
+                    events: {
+                        change: updateStats,
+                        keydown: handleKeyDown
+                    }
+                });
+                
+                console.log('Toast UI Editor initialized successfully');
+            } else {
+                console.error('Toast UI Editor not available');
+                createFallbackEditor();
+                editor = new toastui.Editor({
+                    el: editorElement,
+                    initialValue: '# Welcome to MarkFlow\n\nStart writing your markdown here...'
+                });
+            }
+            
+            updateStats();
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            document.getElementById('open-btn').addEventListener('click', openFile);
+            document.getElementById('save-btn').addEventListener('click', saveFile);
+            document.getElementById('save-as-btn').addEventListener('click', saveAsFile);
+            // Theme toggle removed
+            
+            // Auto-save functionality
+            if (config.autosave) {
+                setInterval(() => {
+                    if (currentFilePath && isOnline) {
+                        saveFile(true);
+                    }
+                }, 30000); // Auto-save every 30 seconds
+            }
+            
+            // Listen for theme changes
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                if (config.mode === 'auto') {
+                    applyThemeMode();
+                }
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', handleGlobalKeyDown);
+        }
+
+        // Handle global keyboard shortcuts
+        function handleGlobalKeyDown(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case 'o':
+                        e.preventDefault();
+                        openFile();
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        if (e.shiftKey) {
+                            saveAsFile();
+                        } else {
+                            saveFile();
+                        }
+                        break;
+                    case 'n':
+                        e.preventDefault();
+                        newFile();
+                        break;
+                }
+            }
+        }
+
+        // Handle editor keydown events
+        function handleKeyDown(e) {
+            // Update cursor position
+            setTimeout(updateCursorPosition, 0);
+        }
+
+        // Update statistics
+        function updateStats() {
+            const content = editor ? editor.getMarkdown() : '';
+            const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+            const charCount = content.length;
+            
+            document.getElementById('word-count').textContent = `Words: ${wordCount}`;
+            document.getElementById('char-count').textContent = `Characters: ${charCount}`;
+        }
+
+        // Update cursor position
+        function updateCursorPosition() {
+            // This would require access to the editor's cursor position
+            // For now, we'll keep it simple
+            document.getElementById('cursor-position').textContent = 'Ln 1, Col 1';
+        }
+
+        // File operations
+        async function openFile() {
+            if (!isOnline) {
+                showNotification('Cannot open file: Backend offline', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/open', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (editor) {
+                        editor.setMarkdown(data.content);
+                    }
+                    currentFilePath = data.filepath;
+                    document.getElementById('file-path').textContent = data.filename;
+                    updateLastSaved();
+                    showNotification('File opened successfully', 'success');
+                } else {
+                    showNotification('Failed to open file', 'error');
+                }
+            } catch (error) {
+                console.error('Open file error:', error);
+                showNotification('Error opening file', 'error');
+            }
+        }
+
+        async function saveFile(isAutoSave = false) {
+            if (!isOnline) {
+                if (!isAutoSave) {
+                    showNotification('Cannot save: Backend offline', 'error');
+                }
+                return;
+            }
+            
+            const content = editor ? editor.getMarkdown() : '';
+            
+            try {
+                const response = await fetch('/api/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content: content,
+                        filepath: currentFilePath
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    currentFilePath = data.filepath;
+                    document.getElementById('file-path').textContent = data.filename;
+                    updateLastSaved();
+                    if (!isAutoSave) {
+                        showNotification('File saved successfully', 'success');
+                    }
+                } else {
+                    if (!isAutoSave) {
+                        showNotification('Failed to save file', 'error');
+                    }
+                }
+            } catch (error) {
+                console.error('Save file error:', error);
+                if (!isAutoSave) {
+                    showNotification('Error saving file', 'error');
+                }
+            }
+        }
+
+        async function saveAsFile() {
+            if (!isOnline) {
+                showNotification('Cannot save: Backend offline', 'error');
+                return;
+            }
+            
+            const content = editor ? editor.getMarkdown() : '';
+            
+            try {
+                const response = await fetch('/api/save-as', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content: content
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    currentFilePath = data.filepath;
+                    document.getElementById('file-path').textContent = data.filename;
+                    updateLastSaved();
+                    showNotification('File saved successfully', 'success');
+                } else {
+                    showNotification('Failed to save file', 'error');
+                }
+            } catch (error) {
+                console.error('Save as file error:', error);
+                showNotification('Error saving file', 'error');
+            }
+        }
+
+        function newFile() {
+            if (editor) {
+                editor.setMarkdown('# New Document\n\nStart writing here...');
+            }
+            currentFilePath = null;
+            document.getElementById('file-path').textContent = 'Untitled.md';
+            document.getElementById('last-saved').textContent = 'Never saved';
+            updateStats();
+        }
+
+        // Theme toggle removed
+        // Backend status check
+        async function checkBackendStatus() {
+            try {
+                const response = await fetch('/api/status', {
+                    timeout: 5000
+                });
+                
+                if (response.ok) {
+                    setOnlineStatus(true);
+                } else {
+                    setOnlineStatus(false);
+                }
+            } catch (error) {
+                setOnlineStatus(false);
+            }
+            
+            // Check again in 10 seconds
+            setTimeout(checkBackendStatus, 10000);
+        }
+
+        // Update online status
+        function setOnlineStatus(online) {
+            isOnline = online;
+            const statusIndicator = document.querySelector('.status-indicator');
+            
+            if (online) {
+                statusIndicator.className = 'status-indicator online';
+            } else {
+                statusIndicator.className = 'status-indicator offline';
+            }
+        }
+        // Update last saved time
+        function updateLastSaved() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            document.getElementById('last-saved').textContent = `Saved at ${timeString}`;
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: var(--surface);
+                color: var(--on-surface);
+                padding: 12px 16px;
+                border-radius: 4px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                z-index: 1000;
+                animation: slideIn 0.3s ease-out;
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-in';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+
+        // Hide loading overlay
+        function hideLoadingOverlay() {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 300);
+        }
+
+        // Add notification animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
