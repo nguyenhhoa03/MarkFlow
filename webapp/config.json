@@ -1,0 +1,30 @@
+{
+  "theme": "green.css",
+  "mode": "auto",
+  "autosave": true,
+  "defaultExtension": ".md",
+  "editor": {
+    "initialEditType": "wysiwyg",
+    "previewStyle": "vertical",
+    "hideModeSwitch": false,
+    "lineNumbers": true,
+    "wordWrap": true,
+    "fontSize": 14,
+    "fontFamily": "Roboto Mono, monospace"
+  },
+  "ui": {
+    "showWordCount": true,
+    "showCharCount": true,
+    "showCursorPosition": true,
+    "showLastSaved": true,
+    "animationDuration": 300,
+    "notificationTimeout": 3000
+  },
+  "shortcuts": {
+    "save": "Ctrl+S",
+    "saveAs": "Ctrl+Shift+S",
+    "open": "Ctrl+O",
+    "new": "Ctrl+N",
+    "toggleTheme": "Ctrl+T"
+  }
+}
