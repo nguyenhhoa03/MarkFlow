@@ -20,18 +20,23 @@ import shutil
 
 def find_browser_executable(browser_names):
     """
-    Find the first available browser executable from a list of browser names.
+    Find the first available browser executable from a list of browser names/paths.
     
     Args:
-        browser_names (list): List of browser executable names to search for
+        browser_names (list): List of browser executable names or full paths to search for
         
     Returns:
         str or None: Path to the browser executable if found, None otherwise
     """
     for browser_name in browser_names:
-        browser_path = shutil.which(browser_name)
-        if browser_path:
-            return browser_path
+        # If it's a full path, check if it exists directly
+        if os.path.isabs(browser_name) and os.path.exists(browser_name):
+            return browser_name
+        # Otherwise, use shutil.which to find it in PATH
+        else:
+            browser_path = shutil.which(browser_name)
+            if browser_path:
+                return browser_path
     return None
 
 
@@ -41,16 +46,33 @@ def get_windows_browsers():
     Prioritizes Microsoft Edge first.
     
     Returns:
-        list: List of browser executable names
+        list: List of browser executable paths and names
     """
-    return [
-        'msedge.exe',
+    # Common installation paths for Microsoft Edge
+    edge_paths = [
+        r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
+        r'C:\Program Files\Microsoft\Edge\Application\msedge.exe',
+        os.path.expandvars(r'%LOCALAPPDATA%\Microsoft\Edge\Application\msedge.exe')
+    ]
+    
+    browsers = []
+    
+    # Add Edge paths that exist
+    for edge_path in edge_paths:
+        if os.path.exists(edge_path):
+            browsers.append(edge_path)
+            break  # Only add the first found Edge installation
+    
+    # Add other browsers (these are more likely to be in PATH)
+    browsers.extend([
         'chrome.exe',
         'chromium.exe',
         'brave.exe',
         'opera.exe',
         'vivaldi.exe'
-    ]
+    ])
+    
+    return browsers
 
 
 def get_unix_browsers():
