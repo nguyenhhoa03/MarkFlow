@@ -5,7 +5,7 @@ Usage: python3 webapp.py <URL>
 Example: python3 webapp.py http://127.0.0.1:5500
 
 This script detects the operating system and launches a web URL in app mode:
-- Windows: Prioritizes Microsoft Edge, then other Chromium-based browsers
+- Windows: Prioritizes Google Chrome, then other Chromium-based browsers
 - Linux & macOS: Searches for Chromium-based browsers
 - Falls back to default browser if no Chromium-based browser is found
 """
@@ -43,33 +43,87 @@ def find_browser_executable(browser_names):
 def get_windows_browsers():
     """
     Get list of Chromium-based browser executables for Windows.
-    Prioritizes Microsoft Edge first.
+    Prioritizes Google Chrome first, then Microsoft Edge, then others.
     
     Returns:
         list: List of browser executable paths and names
     """
-    # Common installation paths for Microsoft Edge
+    browsers = []
+    
+    # Google Chrome paths (prioritize first due to market share)
+    chrome_paths = [
+        r'C:\Program Files\Google\Chrome\Application\chrome.exe',
+        os.path.expandvars(r'%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe')
+    ]
+    
+    for chrome_path in chrome_paths:
+        if os.path.exists(chrome_path):
+            browsers.append(chrome_path)
+            break  # Only add the first found Chrome installation
+    
+    # Microsoft Edge paths
     edge_paths = [
         r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
         r'C:\Program Files\Microsoft\Edge\Application\msedge.exe',
         os.path.expandvars(r'%LOCALAPPDATA%\Microsoft\Edge\Application\msedge.exe')
     ]
     
-    browsers = []
-    
-    # Add Edge paths that exist
     for edge_path in edge_paths:
         if os.path.exists(edge_path):
             browsers.append(edge_path)
             break  # Only add the first found Edge installation
     
-    # Add other browsers (these are more likely to be in PATH)
+    # Brave Browser paths
+    brave_paths = [
+        r'C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe',
+        os.path.expandvars(r'%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe')
+    ]
+    
+    for brave_path in brave_paths:
+        if os.path.exists(brave_path):
+            browsers.append(brave_path)
+            break  # Only add the first found Brave installation
+    
+    # Vivaldi paths
+    vivaldi_paths = [
+        r'C:\Program Files\Vivaldi\Application\vivaldi.exe',
+        os.path.expandvars(r'%LOCALAPPDATA%\Vivaldi\Application\vivaldi.exe')
+    ]
+    
+    for vivaldi_path in vivaldi_paths:
+        if os.path.exists(vivaldi_path):
+            browsers.append(vivaldi_path)
+            break  # Only add the first found Vivaldi installation
+    
+    # Opera paths (uses launcher.exe)
+    opera_paths = [
+        os.path.expandvars(r'%LOCALAPPDATA%\Programs\Opera\launcher.exe')
+    ]
+    
+    for opera_path in opera_paths:
+        if os.path.exists(opera_path):
+            browsers.append(opera_path)
+            break  # Only add the first found Opera installation
+    
+    # Ungoogled Chromium paths (manual installation)
+    chromium_paths = [
+        r'C:\Program Files\Chromium\Application\chrome.exe',
+        r'C:\Program Files (x86)\Chromium\Application\chrome.exe'
+    ]
+    
+    for chromium_path in chromium_paths:
+        if os.path.exists(chromium_path):
+            browsers.append(chromium_path)
+            break  # Only add the first found Chromium installation
+    
+    # Fallback to PATH-based detection for any browsers we might have missed
     browsers.extend([
         'chrome.exe',
-        'chromium.exe',
+        'msedge.exe',
         'brave.exe',
-        'opera.exe',
-        'vivaldi.exe'
+        'vivaldi.exe',
+        'launcher.exe',  # Opera
+        'chromium.exe'
     ])
     
     return browsers
@@ -206,7 +260,7 @@ def launch_webapp(url):
     browser_path = None
     
     if system == 'windows':
-        print("Searching for Chromium-based browsers (prioritizing Microsoft Edge)...")
+        print("Searching for Chromium-based browsers (prioritizing Google Chrome)...")
         browser_names = get_windows_browsers()
         browser_path = find_browser_executable(browser_names)
         
