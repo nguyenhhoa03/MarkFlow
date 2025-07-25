@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarkFlow</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        /* Theme Variables */
+        body.light {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f5f5;
+            --border-color: #e0e0e0;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --tab-active: #ffffff;
+            --tab-inactive: #f0f0f0;
+            --tab-hover: #e8f5e8;
+            --accent: #16a085;
+            --accent-hover: #138d75;
+            --close-hover: #ff4757;
+        }
+
+        body.dark {
+            --bg-primary: #1e1e1e;
+            --bg-secondary: #252526;
+            --border-color: #3e3e42;
+            --text-primary: #cccccc;
+            --text-secondary: #969696;
+            --tab-active: #2d2d30;
+            --tab-inactive: #1e1e1e;
+            --tab-hover: #2a4d3a;
+            --accent: #1abc9c;
+            --accent-hover: #16a085;
+            --close-hover: #ff6b7a;
+        }
+
+        body.auto {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f5f5;
+            --border-color: #e0e0e0;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --tab-active: #ffffff;
+            --tab-inactive: #f0f0f0;
+            --tab-hover: #e8f5e8;
+            --accent: #16a085;
+            --accent-hover: #138d75;
+            --close-hover: #ff4757;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body.auto {
+                --bg-primary: #1e1e1e;
+                --bg-secondary: #252526;
+                --border-color: #3e3e42;
+                --text-primary: #cccccc;
+                --text-secondary: #969696;
+                --tab-active: #2d2d30;
+                --tab-inactive: #1e1e1e;
+                --tab-hover: #2a4d3a;
+                --accent: #1abc9c;
+                --accent-hover: #16a085;
+                --close-hover: #ff6b7a;
+            }
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .app-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tab-bar {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            height: 36px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .tabs-container {
+            display: flex;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .tabs-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab {
+            display: flex;
+            align-items: center;
+            min-width: 120px;
+            max-width: 240px;
+            height: 100%;
+            padding: 8px 12px;
+            background-color: var(--tab-inactive);
+            border-right: 1px solid var(--border-color);
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s ease;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .tab:hover {
+            background-color: var(--tab-hover);
+        }
+
+        .tab.active {
+            background-color: var(--tab-active);
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .tab.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+            z-index: 1000;
+        }
+
+        .tab-title {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 400;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text-primary);
+            margin-right: 8px;
+            line-height: 1.5;
+            padding: 8px 0;
+        }
+
+        .tab.active .tab-title {
+            font-weight: 500;
+        }
+
+        .tab-close {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .tab-close:hover {
+            background-color: var(--close-hover);
+            color: white;
+        }
+
+        .new-tab-btn {
+            width: 36px;
+            height: 36px;
+            margin: 10px 4px 10px 0;
+            border: none;
+            border-radius: 4px;
+            background-color: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .new-tab-btn:hover {
+            background-color: var(--tab-hover);
+            color: var(--accent);
+        }
+
+        .content-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tab-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease;
+        }
+
+        .tab-content.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .tab-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: var(--bg-primary);
+        }
+
+        .drop-indicator {
+            position: absolute;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background-color: var(--accent);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .drop-indicator.show {
+            opacity: 1;
+        }
+
+        /* Mobile Styles */
+        @media (max-width: 768px) {
+            .tab {
+                min-width: 100px;
+                max-width: 160px;
+                padding: 6px 8px;
+            }
+
+            .tab-title {
+                font-size: 13px;
+                padding: 3px 0;
+            }
+
+            .tab-bar {
+                height: 44px;
+            }
+
+            .new-tab-btn {
+                width: 26px;
+                height: 26px;
+                margin: 9px 4px 9px 0;
+                font-size: 16px;
+            }
+        }
+
+        /* Loading indicator */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body class="auto">
+    <div class="app-container">
+        <div class="tab-bar">
+            <div class="tabs-container" id="tabsContainer">
+                <!-- Tabs will be inserted here -->
+                <button class="new-tab-btn" id="newTabBtn" title="New Tab">+</button>
+            </div>
+            <div class="drop-indicator" id="dropIndicator"></div>
+        </div>
+        <div class="content-area" id="contentArea">
+            <!-- Tab contents will be inserted here -->
+        </div>
+    </div>
+
+    <script>
+        class MarkFlow {
+            constructor() {
+                this.tabs = [];
+                this.activeTabId = null;
+                this.nextTabId = 1;
+                this.draggedTab = null;
+                this.dropIndex = -1;
+                
+                this.init();
+                this.loadConfig();
+                this.listenToFlask();
+            }
+
+            init() {
+                // Create home tab (non-closable)
+                this.createTab('home.html', 'Home', false);
+                
+                // Bind events
+                document.getElementById('newTabBtn').addEventListener('click', () => {
+                    this.createTab('editor.html', 'New Tab');
+                });
+
+                // Setup drag and drop
+                this.setupDragAndDrop();
+            }
+
+            async loadConfig() {
+                try {
+                    const response = await fetch('/config.json');
+                    const config = await response.json();
+                    const mode = config.mode || 'auto';
+                    document.body.className = mode;
+                } catch (error) {
+                    console.log('Config not found, using auto mode');
+                    document.body.className = 'auto';
+                }
+            }
+
+            listenToFlask() {
+                // Listen for Flask server requests to open new tabs
+                const eventSource = new EventSource('/events');
+                eventSource.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'open_tab') {
+                        this.createTab(data.url, data.title || 'New Tab');
+                    }
+                };
+
+                eventSource.onerror = () => {
+                    // Retry connection after 5 seconds
+                    setTimeout(() => {
+                        eventSource.close();
+                        this.listenToFlask();
+                    }, 5000);
+                };
+            }
+
+            createTab(url, title = 'New Tab', closable = true) {
+                const tabId = this.nextTabId++;
+                const tab = {
+                    id: tabId,
+                    url: url,
+                    title: title,
+                    closable: closable,
+                    element: null,
+                    contentElement: null
+                };
+
+                // Create tab element
+                const tabElement = document.createElement('div');
+                tabElement.className = 'tab';
+                tabElement.dataset.tabId = tabId;
+                tabElement.draggable = true;
+                
+                const titleElement = document.createElement('span');
+                titleElement.className = 'tab-title';
+                titleElement.textContent = title;
+                
+                tabElement.appendChild(titleElement);
+
+                if (closable) {
+                    const closeButton = document.createElement('div');
+                    closeButton.className = 'tab-close';
+                    closeButton.innerHTML = '×';
+                    closeButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.closeTab(tabId);
+                    });
+                    tabElement.appendChild(closeButton);
+                }
+
+                tabElement.addEventListener('click', () => {
+                    this.activateTab(tabId);
+                });
+
+                // Create content element
+                const contentElement = document.createElement('div');
+                contentElement.className = 'tab-content';
+                contentElement.dataset.tabId = tabId;
+
+                const iframe = document.createElement('iframe');
+                iframe.className = 'tab-iframe';
+                iframe.src = url;
+                
+                // Update tab title when iframe loads
+                iframe.onload = () => {
+                    try {
+                        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                        const iframeTitle = iframeDoc.title;
+                        if (iframeTitle) {
+                            tab.title = iframeTitle;
+                            titleElement.textContent = iframeTitle;
+                            titleElement.title = iframeTitle;
+                        }
+                    } catch (e) {
+                        // Cross-origin or other error, keep original title
+                        titleElement.title = title;
+                    }
+                };
+
+                contentElement.appendChild(iframe);
+
+                tab.element = tabElement;
+                tab.contentElement = contentElement;
+
+                // Insert tab before the new tab button
+                this.tabs.push(tab);
+                const tabsContainer = document.getElementById('tabsContainer');
+                const newTabBtn = document.getElementById('newTabBtn');
+                tabsContainer.insertBefore(tabElement, newTabBtn);
+                document.getElementById('contentArea').appendChild(contentElement);
+
+                // Activate the new tab
+                this.activateTab(tabId);
+
+                return tab;
+            }
+
+            closeTab(tabId) {
+                const tabIndex = this.tabs.findIndex(t => t.id === tabId);
+                if (tabIndex === -1) return;
+
+                const tab = this.tabs[tabIndex];
+                if (!tab.closable) return;
+
+                // Remove elements
+                tab.element.remove();
+                tab.contentElement.remove();
+
+                // Remove from array
+                this.tabs.splice(tabIndex, 1);
+
+                // If this was the active tab, activate another
+                if (this.activeTabId === tabId) {
+                    if (this.tabs.length > 0) {
+                        const newActiveIndex = Math.min(tabIndex, this.tabs.length - 1);
+                        this.activateTab(this.tabs[newActiveIndex].id);
+                    } else {
+                        this.activeTabId = null;
+                    }
+                }
+            }
+
+            activateTab(tabId) {
+                // Deactivate current tab
+                this.tabs.forEach(tab => {
+                    tab.element.classList.remove('active');
+                    tab.contentElement.classList.remove('active');
+                });
+
+                // Activate new tab
+                const tab = this.tabs.find(t => t.id === tabId);
+                if (tab) {
+                    tab.element.classList.add('active');
+                    tab.contentElement.classList.add('active');
+                    this.activeTabId = tabId;
+
+                    // Scroll tab into view if needed
+                    this.scrollTabIntoView(tab.element);
+                }
+            }
+
+            scrollTabIntoView(tabElement) {
+                const container = document.getElementById('tabsContainer');
+                const containerRect = container.getBoundingClientRect();
+                const tabRect = tabElement.getBoundingClientRect();
+
+                if (tabRect.left < containerRect.left) {
+                    container.scrollLeft -= (containerRect.left - tabRect.left) + 20;
+                } else if (tabRect.right > containerRect.right) {
+                    container.scrollLeft += (tabRect.right - containerRect.right) + 20;
+                }
+            }
+
+            setupDragAndDrop() {
+                const container = document.getElementById('tabsContainer');
+                const dropIndicator = document.getElementById('dropIndicator');
+
+                container.addEventListener('dragstart', (e) => {
+                    const tabElement = e.target.closest('.tab');
+                    if (tabElement) {
+                        this.draggedTab = tabElement;
+                        tabElement.classList.add('dragging');
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/html', tabElement.outerHTML);
+                    }
+                });
+
+                container.addEventListener('dragend', (e) => {
+                    const tabElement = e.target.closest('.tab');
+                    if (tabElement) {
+                        tabElement.classList.remove('dragging');
+                        dropIndicator.classList.remove('show');
+                        this.draggedTab = null;
+                        this.dropIndex = -1;
+                    }
+                });
+
+                container.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+
+                    if (!this.draggedTab) return;
+
+                    const afterElement = this.getDragAfterElement(container, e.clientX);
+                    const containerRect = container.getBoundingClientRect();
+                    
+                    if (afterElement == null) {
+                        dropIndicator.style.left = (container.scrollLeft + container.scrollWidth - containerRect.left) + 'px';
+                        this.dropIndex = this.tabs.length;
+                    } else {
+                        const afterRect = afterElement.getBoundingClientRect();
+                        dropIndicator.style.left = (afterRect.left - containerRect.left + container.scrollLeft) + 'px';
+                        const afterTabId = parseInt(afterElement.dataset.tabId);
+                        this.dropIndex = this.tabs.findIndex(t => t.id === afterTabId);
+                    }
+
+                    dropIndicator.classList.add('show');
+                });
+
+                container.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    
+                    if (!this.draggedTab || this.dropIndex === -1) return;
+
+                    const draggedTabId = parseInt(this.draggedTab.dataset.tabId);
+                    const draggedIndex = this.tabs.findIndex(t => t.id === draggedTabId);
+                    
+                    if (draggedIndex === -1 || draggedIndex === this.dropIndex) return;
+
+                    // Reorder tabs array
+                    const [draggedTab] = this.tabs.splice(draggedIndex, 1);
+                    const newIndex = this.dropIndex > draggedIndex ? this.dropIndex - 1 : this.dropIndex;
+                    this.tabs.splice(newIndex, 0, draggedTab);
+
+                    // Reorder DOM elements
+                    this.reorderTabElements();
+                });
+
+                container.addEventListener('dragleave', (e) => {
+                    if (!container.contains(e.relatedTarget)) {
+                        dropIndicator.classList.remove('show');
+                    }
+                });
+            }
+
+            getDragAfterElement(container, x) {
+                const draggableElements = [...container.querySelectorAll('.tab:not(.dragging)')];
+                
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = x - box.left - box.width / 2;
+                    
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child };
+                    } else {
+                        return closest;
+                    }
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            }
+
+            reorderTabElements() {
+                const container = document.getElementById('tabsContainer');
+                const newTabBtn = document.getElementById('newTabBtn');
+                
+                // Remove all tabs (keep the + button)
+                const tabElements = container.querySelectorAll('.tab');
+                tabElements.forEach(tab => tab.remove());
+
+                // Re-add tabs in new order before the + button
+                this.tabs.forEach(tab => {
+                    container.insertBefore(tab.element, newTabBtn);
+                });
+            }
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            new MarkFlow();
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            // Ensure active tab is visible
+            const activeTab = document.querySelector('.tab.active');
+            if (activeTab) {
+                const container = document.getElementById('tabsContainer');
+                const containerRect = container.getBoundingClientRect();
+                const tabRect = activeTab.getBoundingClientRect();
+                
+                if (tabRect.right > containerRect.right || tabRect.left < containerRect.left) {
+                    activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        });
+    </script>
+</body>
+</html>

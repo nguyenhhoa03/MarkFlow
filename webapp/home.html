@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Material Design 3 Green Color Palette */
+            --md-sys-color-primary-light: #006e1c;
+            --md-sys-color-on-primary-light: #ffffff;
+            --md-sys-color-primary-container-light: #9cf675;
+            --md-sys-color-on-primary-container-light: #002204;
+            --md-sys-color-surface-light: #fcfdf6;
+            --md-sys-color-on-surface-light: #1a1c18;
+            --md-sys-color-surface-container-light: #eef0e9;
+            --md-sys-color-surface-container-low-light: #f6f7f0;
+            --md-sys-color-surface-container-high-light: #e3e4dd;
+            --md-sys-color-outline-light: #73796e;
+            --md-sys-color-outline-variant-light: #c3c9bd;
+            --md-sys-color-shadow-light: #000000;
+            --md-sys-color-scrim-light: #000000;
+            
+            --md-sys-color-primary-dark: #80d960;
+            --md-sys-color-on-primary-dark: #00390a;
+            --md-sys-color-primary-container-dark: #005313;
+            --md-sys-color-on-primary-container-dark: #9cf675;
+            --md-sys-color-surface-dark: #111410;
+            --md-sys-color-on-surface-dark: #e3e4dd;
+            --md-sys-color-surface-container-dark: #1e201b;
+            --md-sys-color-surface-container-low-dark: #1a1c18;
+            --md-sys-color-surface-container-high-dark: #282b23;
+            --md-sys-color-outline-dark: #8d9387;
+            --md-sys-color-outline-variant-dark: #414940;
+            --md-sys-color-shadow-dark: #000000;
+            --md-sys-color-scrim-dark: #000000;
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root {
+                --md-sys-color-primary: var(--md-sys-color-primary-light);
+                --md-sys-color-on-primary: var(--md-sys-color-on-primary-light);
+                --md-sys-color-primary-container: var(--md-sys-color-primary-container-light);
+                --md-sys-color-on-primary-container: var(--md-sys-color-on-primary-container-light);
+                --md-sys-color-surface: var(--md-sys-color-surface-light);
+                --md-sys-color-on-surface: var(--md-sys-color-on-surface-light);
+                --md-sys-color-surface-container: var(--md-sys-color-surface-container-light);
+                --md-sys-color-surface-container-low: var(--md-sys-color-surface-container-low-light);
+                --md-sys-color-surface-container-high: var(--md-sys-color-surface-container-high-light);
+                --md-sys-color-outline: var(--md-sys-color-outline-light);
+                --md-sys-color-outline-variant: var(--md-sys-color-outline-variant-light);
+                --md-sys-color-shadow: var(--md-sys-color-shadow-light);
+                --md-sys-color-scrim: var(--md-sys-color-scrim-light);
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --md-sys-color-primary: var(--md-sys-color-primary-dark);
+                --md-sys-color-on-primary: var(--md-sys-color-on-primary-dark);
+                --md-sys-color-primary-container: var(--md-sys-color-primary-container-dark);
+                --md-sys-color-on-primary-container: var(--md-sys-color-on-primary-container-dark);
+                --md-sys-color-surface: var(--md-sys-color-surface-dark);
+                --md-sys-color-on-surface: var(--md-sys-color-on-surface-dark);
+                --md-sys-color-surface-container: var(--md-sys-color-surface-container-dark);
+                --md-sys-color-surface-container-low: var(--md-sys-color-surface-container-low-dark);
+                --md-sys-color-surface-container-high: var(--md-sys-color-surface-container-high-dark);
+                --md-sys-color-outline: var(--md-sys-color-outline-dark);
+                --md-sys-color-outline-variant: var(--md-sys-color-outline-variant-dark);
+                --md-sys-color-shadow: var(--md-sys-color-shadow-dark);
+                --md-sys-color-scrim: var(--md-sys-color-scrim-dark);
+            }
+        }
+
+        body {
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .container {
+            height: 100vh;
+            position: relative;
+            background-color: var(--md-sys-color-surface);
+            background-image: 
+                radial-gradient(circle at 20% 80%, var(--md-sys-color-primary-container) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, var(--md-sys-color-primary-container) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, var(--md-sys-color-surface-container) 0%, transparent 50%);
+            background-size: 100% 100%;
+            background-position: 0 0, 0 0, 0 0;
+            transition: background-color 0.3s ease;
+        }
+
+        /* Group 1: Left side content - Fixed position */
+        .left-content {
+            position: absolute;
+            width: 320px;
+            left: 8%;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            z-index: 10;
+        }
+
+        .portrait .left-content {
+            width: 320px;
+            left: 50%;
+            top: 40%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .portrait .header {
+            justify-content: center;
+        }
+
+        .preferences-btn {
+            background: var(--md-sys-color-surface-container);
+            border: none;
+            color: var(--md-sys-color-on-surface);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 12px;
+            border-radius: 12px;
+            transition: all 0.2s cubic-bezier(0.2, 0.0, 0.0, 1.0);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+            min-width: 48px;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preferences-btn:hover {
+            background: var(--md-sys-color-surface-container-high);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.16), 0 2px 4px rgba(0, 0, 0, 0.12);
+        }
+
+        .preferences-btn:active {
+            background: var(--md-sys-color-surface-container-low);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+        }
+
+        .welcome-text {
+            color: var(--md-sys-color-on-surface);
+            font-size: 32px;
+            font-weight: 400;
+            letter-spacing: 0.25px;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .action-btn {
+            background: var(--md-sys-color-primary-container);
+            border: none;
+            color: var(--md-sys-color-on-primary-container);
+            padding: 16px 24px;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.2, 0.0, 0.0, 1.0);
+            text-align: center;
+            min-width: 200px;
+            min-height: 48px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+            letter-spacing: 0.1px;
+        }
+
+        .action-btn:hover {
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.16), 0 2px 4px rgba(0, 0, 0, 0.12);
+            transform: translateY(-1px);
+        }
+
+        .action-btn:active {
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+            transform: translateY(0);
+        }
+
+        /* Group 2: Hidden in all layouts */
+        .center-logo {
+            display: none;
+        }
+
+        /* Group 3: Bottom right branding */
+        .bottom-right {
+            position: absolute;
+            bottom: 32px;
+            right: 32px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .branding {
+            color: var(--md-sys-color-on-surface);
+            text-align: right;
+        }
+
+        .brand-name {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--md-sys-color-primary);
+            letter-spacing: -0.5px;
+        }
+
+        .brand-slogan {
+            font-size: 14px;
+            color: var(--md-sys-color-outline);
+            font-weight: 400;
+            letter-spacing: 0.25px;
+        }
+
+        /* Media queries for responsive design */
+        @media (max-width: 768px) or (max-aspect-ratio: 1/1) {
+            .left-content {
+                width: 320px;
+                left: 50%;
+                top: 40%;
+                transform: translate(-50%, -50%);
+                text-align: center;
+            }
+            
+            .header {
+                justify-content: center;
+            }
+            
+            .center-logo {
+                display: none;
+            }
+            
+            .bottom-right {
+                bottom: 24px;
+                right: 24px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .left-content {
+                width: 280px;
+                gap: 20px;
+            }
+            
+            .welcome-text {
+                font-size: 28px;
+            }
+            
+            .action-btn {
+                min-width: 160px;
+                padding: 14px 20px;
+            }
+            
+            .brand-name {
+                font-size: 24px;
+            }
+        }
+
+        /* Smooth transitions for theme changes */
+        *, *::before, *::after {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="container">
+        <!-- Group 1: Left Content -->
+        <div class="left-content">
+            <div class="header">
+                <button class="preferences-btn" onclick="handlePreferences()" aria-label="Open preferences">≡</button>
+                <h1 class="welcome-text">Welcome back!</h1>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="action-btn" onclick="handleNewNote()">New note</button>
+                <button class="action-btn" onclick="handleOpenFile()">Open file</button>
+                <button class="action-btn" onclick="handleMySpace()">My space</button>
+                <button class="action-btn" onclick="handleRestoreSession()">Restore session</button>
+            </div>
+        </div>
+
+        <!-- Group 2: Removed -->
+
+        <!-- Group 3: Bottom Right Branding -->
+        <div class="bottom-right">
+            <div class="branding">
+                <div class="brand-name">MarkFlow</div>
+                <div class="brand-slogan">Capture ideas. Build them into reality</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Handle button clicks with console logging
+        function handlePreferences() {
+            console.log('Preferences clicked');
+        }
+
+        function handleNewNote() {
+            console.log('New note clicked');
+        }
+
+        function handleOpenFile() {
+            console.log('Open file clicked');
+        }
+
+        function handleMySpace() {
+            console.log('My space clicked');
+        }
+
+        function handleRestoreSession() {
+            console.log('Restore session clicked');
+        }
+
+        // Handle responsive layout
+        function updateLayout() {
+            const container = document.getElementById('container');
+            const aspectRatio = window.innerWidth / window.innerHeight;
+            
+            if (aspectRatio > 1) {
+                container.classList.remove('portrait');
+                container.classList.add('landscape');
+            } else {
+                container.classList.remove('landscape');
+                container.classList.add('portrait');
+            }
+        }
+
+        // Initial layout setup
+        updateLayout();
+
+        // Update layout on window resize
+        window.addEventListener('resize', updateLayout);
+
+        // Add ripple effect to buttons
+        document.querySelectorAll('.action-btn, .preferences-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                const ripple = document.createElement('span');
+                const rect = this.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
+                
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = x + 'px';
+                ripple.style.top = y + 'px';
+                ripple.classList.add('ripple');
+                
+                this.appendChild(ripple);
+                
+                setTimeout(() => {
+                    ripple.remove();
+                }, 600);
+            });
+        });
+
+        // Add ripple animation styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .action-btn, .preferences-btn {
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .ripple {
+                position: absolute;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.3);
+                transform: scale(0);
+                animation: ripple 0.6s linear;
+                pointer-events: none;
+            }
+            
+            @keyframes ripple {
+                to {
+                    transform: scale(2);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
