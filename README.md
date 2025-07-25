@@ -13,7 +13,6 @@ MarkFlow is a streamlined note-taking application built with [ToastUI Editor](ht
 ### 🌍 **Cross-Platform Support**
 - **Desktop**: Windows, macOS, and Linux compatibility
 - **Mobile**: Web-based access for Android and iOS devices
-- Seamless synchronization across all platforms
 
 ### 📝 **Open Format**
 - **Markdown-based**: Human-readable, easy-to-write format
@@ -59,12 +58,12 @@ https://markflow.free.nf/download
 ## 📋 System Requirements
 
 ### Desktop Application
-- **Windows**: Windows 10 or later
+- **Windows**: Windows 7 or later
 - **macOS**: macOS 10.14 or later  
 - **Linux**: Most modern distributions
 
 ### Web Version
-- **Browser**: Chrome, Firefox, Safari, Edge (latest versions)
+- **Browser**: Chrome, Firefox, Safari, Edge,...
 - **Internet**: Required for initial loading, offline functionality available
 
 ## 🎯 Use Cases
