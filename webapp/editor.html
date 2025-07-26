@@ -213,6 +213,42 @@
             from { transform: translateX(0); opacity: 1; }
             to { transform: translateX(100%); opacity: 0; }
         }
+
+        /* Fallback editor styles */
+        .fallback-editor-container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: var(--surface);
+        }
+
+        .fallback-notice {
+            background: var(--surface-variant);
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--outline-variant);
+            font-size: 12px;
+            color: var(--on-surface-variant);
+            text-align: center;
+        }
+
+        .fallback-textarea {
+            flex: 1;
+            border: none;
+            outline: none;
+            resize: none;
+            padding: 16px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            background: var(--surface);
+            color: var(--on-surface);
+            tab-size: 4;
+        }
+
+        .fallback-textarea::placeholder {
+            color: var(--on-surface-variant);
+            opacity: 0.7;
+        }
     </style>
 
     <style id="dynamic-theme">
@@ -289,19 +325,91 @@
         <div class="loading-text">Loading MarkFlow...</div>
     </div>
 
-    <!-- Toast UI Editor and dependencies -->
-    <script src="js/highlight.min.js"></script>
-    <script src="js/prism-core.min.js"></script>
-    <script src="js/prism-autoloader.min.js"></script>
-
-    <!-- Toast UI Editor -->
-    <script src="js/toastui-editor-all.min.js"></script>
-
-    
     <script>
-        // Initialize the application directly with correct Toast UI Editor
+        // Create localStorage polyfill for pywebview compatibility
+        (function() {
+            'use strict';
+            
+            // Check if localStorage is available and working
+            function isLocalStorageAvailable() {
+                try {
+                    if (typeof window !== 'undefined' && window.localStorage) {
+                        const test = '__localStorage_test__';
+                        window.localStorage.setItem(test, test);
+                        window.localStorage.removeItem(test);
+                        return true;
+                    }
+                } catch (e) {
+                    return false;
+                }
+                return false;
+            }
+
+            // Create in-memory storage polyfill
+            function createMemoryStorage() {
+                const storage = {};
+                return {
+                    getItem: function(key) {
+                        return storage[key] || null;
+                    },
+                    setItem: function(key, value) {
+                        storage[key] = String(value);
+                    },
+                    removeItem: function(key) {
+                        delete storage[key];
+                    },
+                    clear: function() {
+                        for (const key in storage) {
+                            delete storage[key];
+                        }
+                    },
+                    get length() {
+                        return Object.keys(storage).length;
+                    },
+                    key: function(index) {
+                        const keys = Object.keys(storage);
+                        return keys[index] || null;
+                    }
+                };
+            }
+
+            // Apply polyfill if needed - use safer approach
+            if (!isLocalStorageAvailable()) {
+                console.log('localStorage not available, using memory storage polyfill');
+                if (typeof window !== 'undefined') {
+                    try {
+                        // Try to define properties safely
+                        Object.defineProperty(window, 'localStorage', {
+                            value: createMemoryStorage(),
+                            writable: true,
+                            configurable: true
+                        });
+                        Object.defineProperty(window, 'sessionStorage', {
+                            value: createMemoryStorage(),
+                            writable: true,
+                            configurable: true
+                        });
+                    } catch (e) {
+                        // If defineProperty fails, try direct assignment with fallback
+                        console.log('Cannot override localStorage, creating global fallback');
+                        window._memoryStorage = createMemoryStorage();
+                        
+                        // Create wrapper functions that Toast UI Editor might use
+                        if (!window.localStorage || typeof window.localStorage.getItem !== 'function') {
+                            window.localStorage = window._memoryStorage;
+                        }
+                        if (!window.sessionStorage || typeof window.sessionStorage.getItem !== 'function') {
+                            window.sessionStorage = window._memoryStorage;
+                        }
+                    }
+                }
+            }
+        })();
+
+        // Global variables
         let editor = null;
         let currentFilePath = null;
+        let editorContent = '# Welcome to MarkFlow\n\nStart writing your markdown here...';
         let config = {
             theme: 'Material3-green.css',
             mode: 'auto',
@@ -322,104 +430,14 @@
                 })
                 .catch(error => {
                     console.error('Initialization error:', error);
+                    // Create fallback editor even if initialization fails
+                    createFallbackEditor();
+                    setupEventListeners();
                     hideLoadingOverlay();
                 });
         }
 
-        // Load Toast UI Editor when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            // Check if Toast UI Editor is available
-            if (typeof toastui !== 'undefined' && toastui.Editor) {
-                initializeApp();
-            } else {
-                // Wait a bit more for the script to load
-                setTimeout(() => {
-                    if (typeof toastui !== 'undefined' && toastui.Editor) {
-                        initializeApp();
-                    } else {
-                        console.error('Toast UI Editor failed to load');
-                        createFallbackEditor();
-                        initializeApp();
-                    }
-                }, 1000);
-            }
-        });
-
-        // Fallback editor creation
-        function createFallbackEditor() {
-            window.toastui = {
-                Editor: class {
-                    constructor(options) {
-                        this.container = options.el;
-                        this.initialValue = options.initialValue || '';
-                        this.createFallbackEditor();
-                    }
-                    
-                    createFallbackEditor() {
-                        this.container.innerHTML = `
-                            <div style="height: 100%; display: flex; flex-direction: column;">
-                                <div style="background: var(--surface-variant); padding: 8px; border-bottom: 1px solid var(--outline-variant); font-size: 14px; color: var(--on-surface-variant);">
-                                    ⚠️ Toast UI Editor not available - using fallback textarea
-                                </div>
-                                <textarea id="fallback-editor" style="flex: 1; border: none; outline: none; resize: none; padding: 16px; font-family: 'Roboto Mono', monospace; font-size: 14px; line-height: 1.5; background: var(--surface); color: var(--on-surface);" placeholder="Start typing your markdown here...">${this.initialValue}</textarea>
-                            </div>
-                        `;
-                        this.textarea = this.container.querySelector('#fallback-editor');
-                        this.textarea.addEventListener('input', () => {
-                            this.updateStats();
-                            this.updateCursorPosition();
-                        });
-                        this.textarea.addEventListener('click', () => {
-                            this.updateCursorPosition();
-                        });
-                        this.textarea.addEventListener('keyup', () => {
-                            this.updateCursorPosition();
-                        });
-                    }
-                    
-                    getMarkdown() {
-                        return this.textarea ? this.textarea.value : this.initialValue;
-                    }
-                    
-                    setMarkdown(content) {
-                        if (this.textarea) {
-                            this.textarea.value = content;
-                            this.updateStats();
-                        }
-                        this.initialValue = content;
-                    }
-                    
-                    updateStats() {
-                        const content = this.getMarkdown();
-                        const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
-                        const charCount = content.length;
-                        
-                        document.getElementById('word-count').textContent = `Words: ${wordCount}`;
-                        document.getElementById('char-count').textContent = `Characters: ${charCount}`;
-                    }
-                    
-                    updateCursorPosition() {
-                        if (this.textarea) {
-                            const text = this.textarea.value;
-                            const cursorPos = this.textarea.selectionStart;
-                            const lines = text.substr(0, cursorPos).split('\n');
-                            const line = lines.length;
-                            const column = lines[lines.length - 1].length + 1;
-                            
-                            document.getElementById('cursor-position').textContent = `Ln ${line}, Col ${column}`;
-                        }
-                    }
-                    
-                    destroy() {
-                        if (this.container) {
-                            this.container.innerHTML = '';
-                        }
-                    }
-                }
-            };
-        }
-
-        // Load configuration
+        // Load configuration with error handling
         async function loadConfig() {
             try {
                 const response = await fetch('./config.json');
@@ -428,11 +446,11 @@
                     config = { ...config, ...loadedConfig };
                 }
             } catch (error) {
-                console.log('Using default config');
+                console.log('Using default config - config.json not found or invalid');
             }
         }
 
-        // Load theme
+        // Load theme with error handling
         async function loadTheme() {
             try {
                 const response = await fetch(`./css/${config.theme}`);
@@ -454,54 +472,116 @@
             body.classList.remove('light-theme', 'dark-theme');
             
             if (config.mode === 'auto') {
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
                 body.classList.add(prefersDark ? 'dark-theme' : 'light-theme');
             } else {
                 body.classList.add(`${config.mode}-theme`);
             }
         }
 
-        // Initialize the editor
+        // Initialize the editor with fallback
         function initializeEditor() {
             const editorElement = document.getElementById('editor');
             
-            if (typeof toastui !== 'undefined' && toastui.Editor) {
-                editor = new toastui.Editor({
-                    el: editorElement,
-                    height: '100%',
-                    initialEditType: 'wysiwyg',
-                    previewStyle: 'vertical',
-                    initialValue: '# Welcome to MarkFlow\n\nStart writing your markdown here...',
-                    placeholder: 'Start typing your markdown here...',
-                    hideModeSwitch: false,
-                    toolbarItems: [
-                        ['heading', 'bold', 'italic', 'strike'],
-                        ['hr', 'quote'],
-                        ['ul', 'ol', 'task', 'indent', 'outdent'],
-                        ['table', 'image', 'link'],
-                        ['code', 'codeblock'],
-                        ['scrollSync']
-                    ],
-                    events: {
-                        change: updateStats
-                    }
-                });
-                
-                console.log('Toast UI Editor initialized successfully');
-                
-                // Start cursor position tracking
-                setTimeout(startCursorTracking, 1000);
-            } else {
-                console.error('Toast UI Editor not available');
+            // Try to initialize Toast UI Editor
+            try {
+                if (typeof toastui !== 'undefined' && toastui.Editor) {
+                    editor = new toastui.Editor({
+                        el: editorElement,
+                        height: '100%',
+                        initialEditType: 'wysiwyg',
+                        previewStyle: 'vertical',
+                        initialValue: editorContent,
+                        placeholder: 'Start typing your markdown here...',
+                        hideModeSwitch: false,
+                        toolbarItems: [
+                            ['heading', 'bold', 'italic', 'strike'],
+                            ['hr', 'quote'],
+                            ['ul', 'ol', 'task', 'indent', 'outdent'],
+                            ['table', 'image', 'link'],
+                            ['code', 'codeblock'],
+                            ['scrollSync']
+                        ],
+                        events: {
+                            change: function() {
+                                updateStats();
+                                editorContent = editor.getMarkdown();
+                            }
+                        }
+                    });
+                    
+                    console.log('Toast UI Editor initialized successfully');
+                    
+                    // Start cursor position tracking
+                    setTimeout(startCursorTracking, 1000);
+                } else {
+                    throw new Error('Toast UI Editor not available');
+                }
+            } catch (error) {
+                console.error('Toast UI Editor initialization failed:', error);
                 createFallbackEditor();
-                editor = new toastui.Editor({
-                    el: editorElement,
-                    initialValue: '# Welcome to MarkFlow\n\nStart writing your markdown here...'
-                });
             }
             
             updateStats();
             updateCursorPosition();
+        }
+
+        // Create fallback editor
+        function createFallbackEditor() {
+            const editorElement = document.getElementById('editor');
+            
+            editorElement.innerHTML = `
+                <div class="fallback-editor-container">
+                    <div class="fallback-notice">
+                        ⚠️ Rich editor not available - using markdown mode
+                    </div>
+                    <textarea 
+                        id="fallback-textarea" 
+                        class="fallback-textarea" 
+                        placeholder="Start typing your markdown here..."
+                    >${editorContent}</textarea>
+                </div>
+            `;
+            
+            const textarea = document.getElementById('fallback-textarea');
+            
+            // Create editor-like interface
+            editor = {
+                getMarkdown: function() {
+                    return textarea.value;
+                },
+                setMarkdown: function(content) {
+                    textarea.value = content;
+                    editorContent = content;
+                    updateStats();
+                    updateCursorPosition();
+                },
+                destroy: function() {
+                    // Cleanup if needed
+                }
+            };
+            
+            // Add event listeners
+            textarea.addEventListener('input', function() {
+                editorContent = textarea.value;
+                updateStats();
+                updateCursorPosition();
+            });
+            
+            textarea.addEventListener('click', updateCursorPosition);
+            textarea.addEventListener('keyup', updateCursorPosition);
+            textarea.addEventListener('keydown', function(e) {
+                // Handle tab key
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const start = this.selectionStart;
+                    const end = this.selectionEnd;
+                    this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+                    this.selectionStart = this.selectionEnd = start + 4;
+                }
+            });
+            
+            console.log('Fallback editor created');
         }
 
         // Setup event listeners
@@ -514,18 +594,20 @@
             // Auto-save functionality
             if (config.autosave) {
                 setInterval(() => {
-                    if (currentFilePath) {
+                    if (currentFilePath && editor) {
                         saveFile(true);
                     }
                 }, 30000); // Auto-save every 30 seconds
             }
             
             // Listen for theme changes
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-                if (config.mode === 'auto') {
-                    applyThemeMode();
-                }
-            });
+            if (window.matchMedia) {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                    if (config.mode === 'auto') {
+                        applyThemeMode();
+                    }
+                });
+            }
 
             // Keyboard shortcuts
             document.addEventListener('keydown', handleGlobalKeyDown);
@@ -561,15 +643,9 @@
             }
         }
 
-        // Handle editor keydown events
-        function handleKeyDown(e) {
-            // Toast UI Editor doesn't support all events consistently
-            // We'll use a different approach for cursor tracking
-        }
-
         // Update statistics
         function updateStats() {
-            const content = editor ? editor.getMarkdown() : '';
+            const content = editor ? editor.getMarkdown() : editorContent;
             const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
             const charCount = content.length;
             
@@ -577,11 +653,11 @@
             document.getElementById('char-count').textContent = `Characters: ${charCount}`;
         }
 
-        // Update cursor position for Toast UI Editor
+        // Update cursor position
         function updateCursorPosition() {
             try {
+                // Try Toast UI Editor methods
                 if (editor && typeof editor.getCodeMirror === 'function') {
-                    // For markdown mode
                     const cm = editor.getCodeMirror();
                     if (cm && cm.getCursor) {
                         const cursor = cm.getCursor();
@@ -590,38 +666,58 @@
                         document.getElementById('cursor-position').textContent = `Ln ${line}, Col ${col}`;
                         return;
                     }
-                } else if (editor && typeof editor.getCurrentModeEditor === 'function') {
-                    // Try alternative approach
-                    const modeEditor = editor.getCurrentModeEditor();
-                    if (modeEditor && modeEditor.getCursor) {
-                        const cursor = modeEditor.getCursor();
-                        const line = cursor.line + 1;
-                        const col = cursor.ch + 1;
-                        document.getElementById('cursor-position').textContent = `Ln ${line}, Col ${col}`;
-                        return;
-                    }
                 }
                 
-                // Fallback for WYSIWYG mode or when cursor info is not available
+                // Try fallback textarea
+                const textarea = document.getElementById('fallback-textarea');
+                if (textarea) {
+                    const text = textarea.value;
+                    const cursorPos = textarea.selectionStart;
+                    const lines = text.substr(0, cursorPos).split('\n');
+                    const line = lines.length;
+                    const column = lines[lines.length - 1].length + 1;
+                    
+                    document.getElementById('cursor-position').textContent = `Ln ${line}, Col ${column}`;
+                    return;
+                }
+                
+                // Default fallback
                 document.getElementById('cursor-position').textContent = 'Editor Mode';
             } catch (error) {
-                // Fallback - just show default
                 document.getElementById('cursor-position').textContent = 'Ln 1, Col 1';
             }
         }
 
-        // Periodically update cursor position (since events don't work consistently)
+        // Start cursor tracking
         function startCursorTracking() {
             setInterval(() => {
                 if (editor) {
                     updateCursorPosition();
                 }
-            }, 500); // Update every 500ms
+            }, 500);
         }
 
-        // File operations
+        // File operations with proper error handling
         async function openFile() {
             try {
+                // Check if running in pywebview
+                if (typeof pywebview !== 'undefined') {
+                    // Use pywebview API if available
+                    const result = await pywebview.api.open_file();
+                    if (result && result.content !== undefined) {
+                        if (editor) {
+                            editor.setMarkdown(result.content);
+                        }
+                        currentFilePath = result.filepath;
+                        document.getElementById('file-path').textContent = result.filename || 'Unknown file';
+                        document.title = `${result.filename || 'Unknown file'}`;
+                        updateLastSaved();
+                        showNotification('File opened successfully', 'success');
+                        return;
+                    }
+                }
+                
+                // Fallback to fetch API
                 const response = await fetch('/api/open', {
                     method: 'POST',
                     headers: {
@@ -644,14 +740,30 @@
                 }
             } catch (error) {
                 console.error('Open file error:', error);
-                showNotification('Error opening file', 'error');
+                showNotification('Error opening file - API not available', 'error');
             }
         }
 
         async function saveFile(isAutoSave = false) {
-            const content = editor ? editor.getMarkdown() : '';
+            const content = editor ? editor.getMarkdown() : editorContent;
             
             try {
+                // Check if running in pywebview
+                if (typeof pywebview !== 'undefined') {
+                    const result = await pywebview.api.save_file(content, currentFilePath);
+                    if (result && result.success) {
+                        currentFilePath = result.filepath;
+                        document.getElementById('file-path').textContent = result.filename || 'Saved file';
+                        document.title = `${result.filename || 'Saved file'}`;
+                        updateLastSaved();
+                        if (!isAutoSave) {
+                            showNotification('File saved successfully', 'success');
+                        }
+                        return;
+                    }
+                }
+                
+                // Fallback to fetch API
                 const response = await fetch('/api/save', {
                     method: 'POST',
                     headers: {
@@ -680,15 +792,29 @@
             } catch (error) {
                 console.error('Save file error:', error);
                 if (!isAutoSave) {
-                    showNotification('Error saving file', 'error');
+                    showNotification('Error saving file - API not available', 'error');
                 }
             }
         }
 
         async function saveAsFile() {
-            const content = editor ? editor.getMarkdown() : '';
+            const content = editor ? editor.getMarkdown() : editorContent;
             
             try {
+                // Check if running in pywebview
+                if (typeof pywebview !== 'undefined') {
+                    const result = await pywebview.api.save_as_file(content);
+                    if (result && result.success) {
+                        currentFilePath = result.filepath;
+                        document.getElementById('file-path').textContent = result.filename || 'Saved file';
+                        document.title = `${result.filename || 'Saved file'}`;
+                        updateLastSaved();
+                        showNotification('File saved successfully', 'success');
+                        return;
+                    }
+                }
+                
+                // Fallback to fetch API
                 const response = await fetch('/api/save-as', {
                     method: 'POST',
                     headers: {
@@ -711,14 +837,24 @@
                 }
             } catch (error) {
                 console.error('Save as file error:', error);
-                showNotification('Error saving file', 'error');
+                showNotification('Error saving file - API not available', 'error');
             }
         }
 
         async function exportFile() {
-            const content = editor ? editor.getMarkdown() : '';
+            const content = editor ? editor.getMarkdown() : editorContent;
             
             try {
+                // Check if running in pywebview
+                if (typeof pywebview !== 'undefined') {
+                    const result = await pywebview.api.export_file(content);
+                    if (result && result.success) {
+                        showNotification('File exported successfully', 'success');
+                        return;
+                    }
+                }
+                
+                // Fallback to fetch API
                 const response = await fetch('/api/export', {
                     method: 'POST',
                     headers: {
@@ -731,24 +867,26 @@
                 });
                 
                 if (response.ok) {
-                    const data = await response.json();
                     showNotification('File exported successfully', 'success');
                 } else {
                     showNotification('Failed to export file', 'error');
                 }
             } catch (error) {
                 console.error('Export file error:', error);
-                showNotification('Error exporting file', 'error');
+                showNotification('Error exporting file - API not available', 'error');
             }
         }
 
         function newFile() {
+            const defaultContent = '# New Document\n\nStart writing here...';
             if (editor) {
-                editor.setMarkdown('# New Document\n\nStart writing here...');
+                editor.setMarkdown(defaultContent);
             }
+            editorContent = defaultContent;
             currentFilePath = null;
             document.getElementById('file-path').textContent = 'Untitled.md';
             document.getElementById('last-saved').textContent = 'Never saved';
+            document.title = 'New note';
             updateStats();
         }
 
@@ -761,7 +899,6 @@
 
         // Show notification
         function showNotification(message, type = 'info') {
-            // Create notification element
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
             notification.textContent = message;
@@ -776,12 +913,13 @@
                 box-shadow: 0 2px 8px var(--shadow);
                 z-index: 1000;
                 animation: slideIn 0.3s ease-out;
-                border-left: 4px solid var(--primary);
+                border-left: 4px solid ${type === 'error' ? '#f44336' : 'var(--primary)'};
+                max-width: 300px;
+                word-wrap: break-word;
             `;
             
             document.body.appendChild(notification);
             
-            // Remove after 3 seconds
             setTimeout(() => {
                 notification.style.animation = 'slideOut 0.3s ease-in';
                 setTimeout(() => {
@@ -795,11 +933,40 @@
         // Hide loading overlay
         function hideLoadingOverlay() {
             const overlay = document.getElementById('loading-overlay');
-            overlay.style.opacity = '0';
-            setTimeout(() => {
-                overlay.style.display = 'none';
-            }, 300);
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                }, 300);
+            }
+        }
+
+        // Initialize when DOM is ready with better error handling
+        function safeInit() {
+            try {
+                initializeApp();
+            } catch (error) {
+                console.error('App initialization failed:', error);
+                // Create minimal fallback
+                createFallbackEditor();
+                setupEventListeners();
+                hideLoadingOverlay();
+                showNotification('Editor loaded in safe mode', 'info');
+            }
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', safeInit);
+        } else {
+            // DOM is already ready - wait a bit for scripts to load
+            setTimeout(safeInit, 200);
         }
     </script>
+
+    <!-- Toast UI Editor and dependencies - Load after polyfill -->
+    <script src="js/highlight.min.js"></script>
+    <script src="js/prism-core.min.js"></script>
+    <script src="js/prism-autoloader.min.js"></script>
+    <script src="js/toastui-editor-all.min.js"></script>
 </body>
 </html>
