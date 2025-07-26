@@ -9,11 +9,25 @@ Options:
   --browser      Prioritize Chromium app mode, fallback to PyWebView, then default browser
   --auto         Auto mode (default): Prioritize PyWebView, fallback to Chromium, then default browser
 
+PyWebView Options:
+  --title="Title"     Set window title (default: "Web App")
+  --width=1200        Set window width in pixels (default: 1200)
+  --height=800        Set window height in pixels (default: 800)
+  --min-width=800     Set minimum window width (default: 800)
+  --min-height=600    Set minimum window height (default: 600)
+  --no-resize         Disable window resizing (default: resizable)
+  --fullscreen        Start in fullscreen mode (default: windowed)
+  --minimized         Start minimized (default: normal)
+  --on-top            Keep window always on top (default: normal)
+
 Examples:
   python3 webapp.py http://127.0.0.1:5500
   python3 webapp.py --pywebview http://127.0.0.1:5500
   python3 webapp.py --browser http://127.0.0.1:5500
   python3 webapp.py --auto http://127.0.0.1:5500
+  python3 webapp.py --title="My App" --width=1400 --height=900 http://127.0.0.1:5500
+  python3 webapp.py --pywebview --title="Dashboard" --fullscreen http://127.0.0.1:3000
+  python3 webapp.py --title="Chat App" --min-width=1000 --no-resize http://localhost:8080
 
 This script detects the operating system and launches a web URL using different methods:
 - PyWebView: Creates a native desktop app window
@@ -44,32 +58,52 @@ def check_pywebview():
         return False
 
 
-def launch_pywebview(url, title="Web App"):
+def launch_pywebview(url, config=None):
     """
     Launch URL using PyWebView.
     
     Args:
         url (str): URL to open
-        title (str): Window title
+        config (dict): PyWebView configuration options
         
     Returns:
         bool: True if successful, False otherwise
     """
+    if config is None:
+        config = {}
+    
+    # Default configuration
+    default_config = {
+        'title': 'Web App',
+        'width': 1200,
+        'height': 800,
+        'min_size': (800, 600),
+        'resizable': True,
+        'fullscreen': False,
+        'minimized': False,
+        'on_top': False
+    }
+    
+    # Merge with provided config
+    final_config = {**default_config, **config}
+    
     try:
         import webview
         print(f"Launching with PyWebView: {url}")
+        print(f"Window title: {final_config['title']}")
+        print(f"Window size: {final_config['width']}x{final_config['height']}")
         
         # Configure window properties
         webview.create_window(
-            title=title,
+            title=final_config['title'],
             url=url,
-            width=1200,
-            height=800,
-            min_size=(800, 600),
-            resizable=True,
-            fullscreen=False,
-            minimized=False,
-            on_top=False
+            width=final_config['width'],
+            height=final_config['height'],
+            min_size=final_config['min_size'],
+            resizable=final_config['resizable'],
+            fullscreen=final_config['fullscreen'],
+            minimized=final_config['minimized'],
+            on_top=final_config['on_top']
         )
         
         # Start the webview (this will block until window is closed)
@@ -373,13 +407,14 @@ def launch_default_browser(url):
         return False
 
 
-def launch_webapp(url, mode='auto'):
+def launch_webapp(url, mode='auto', pywebview_config=None):
     """
     Main function to launch web app based on mode and operating system.
     
     Args:
         url (str): URL to open
         mode (str): Launch mode ('auto', 'pywebview', 'browser')
+        pywebview_config (dict): PyWebView configuration options
     """
     system = platform.system().lower()
     print(f"Detected operating system: {system}")
@@ -390,7 +425,7 @@ def launch_webapp(url, mode='auto'):
     if mode == 'pywebview':
         # Priority: PyWebView -> Chromium -> Default Browser
         if check_pywebview():
-            success = launch_pywebview(url)
+            success = launch_pywebview(url, pywebview_config)
         
         if not success:
             print("PyWebView failed or not available, trying Chromium app mode...")
@@ -411,7 +446,7 @@ def launch_webapp(url, mode='auto'):
         if not success:
             print("Chromium app mode failed, trying PyWebView...")
             if check_pywebview():
-                success = launch_pywebview(url)
+                success = launch_pywebview(url, pywebview_config)
         
         if not success:
             print("PyWebView failed or not available, falling back to default browser...")
@@ -420,7 +455,7 @@ def launch_webapp(url, mode='auto'):
     else:  # mode == 'auto' or default
         # Priority: PyWebView -> Chromium -> Default Browser
         if check_pywebview():
-            success = launch_pywebview(url)
+            success = launch_pywebview(url, pywebview_config)
         
         if not success:
             print("PyWebView failed or not available, trying Chromium app mode...")
@@ -454,16 +489,31 @@ Options:
   --browser      Prioritize Chromium app mode, fallback to PyWebView, then default browser
   --auto         Auto mode (default): Prioritize PyWebView, fallback to Chromium, then default browser
 
+PyWebView Options:
+  --title="Title"     Set window title (default: "Web App")
+  --width=1200        Set window width in pixels (default: 1200)
+  --height=800        Set window height in pixels (default: 800)
+  --min-width=800     Set minimum window width (default: 800)
+  --min-height=600    Set minimum window height (default: 600)
+  --no-resize         Disable window resizing (default: resizable)
+  --fullscreen        Start in fullscreen mode (default: windowed)
+  --minimized         Start minimized (default: normal)
+  --on-top            Keep window always on top (default: normal)
+
 Examples:
   python3 webapp.py http://127.0.0.1:5500
   python3 webapp.py --pywebview http://127.0.0.1:5500
   python3 webapp.py --browser http://127.0.0.1:5500
   python3 webapp.py --auto http://127.0.0.1:5500
+  python3 webapp.py --title="My App" --width=1400 --height=900 http://127.0.0.1:5500
+  python3 webapp.py --pywebview --title="Dashboard" --fullscreen http://127.0.0.1:3000
+  python3 webapp.py --title="Chat App" --min-width=1000 --no-resize http://localhost:8080
 
 Launch Methods:
   1. PyWebView: Creates a native desktop app window using Python's webview library
      - Requires: pip install pywebview
      - Best for: Desktop app-like experience with native window controls
+     - Supports: Custom window title, size, and behavior options
      
   2. Chromium App Mode: Launches in Chromium-based browsers with --app flag
      - Supports: Chrome, Edge, Brave, Vivaldi, Opera, Chromium
@@ -478,6 +528,7 @@ Notes:
   - On Linux, it also checks for Flatpak browser installations
   - URLs must start with http:// or https://
   - PyWebView installation is optional but recommended for best experience
+  - PyWebView options only affect PyWebView launches, not browser launches
 """
     print(help_text)
 
@@ -487,7 +538,8 @@ def parse_arguments():
     Parse command line arguments.
     
     Returns:
-        tuple: (url, mode) where mode is 'auto', 'pywebview', or 'browser'
+        tuple: (url, mode, pywebview_config) where mode is 'auto', 'pywebview', or 'browser'
+               and pywebview_config is a dict with PyWebView configuration
     """
     if len(sys.argv) < 2:
         print("Error: No arguments provided.")
@@ -502,14 +554,64 @@ def parse_arguments():
     # Parse arguments
     mode = 'auto'  # default mode
     url = None
+    pywebview_config = {}
     
-    for i, arg in enumerate(sys.argv[1:], 1):
+    i = 1
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        
         if arg == '--pywebview':
             mode = 'pywebview'
         elif arg == '--browser':
             mode = 'browser'
         elif arg == '--auto':
             mode = 'auto'
+        elif arg.startswith('--title='):
+            pywebview_config['title'] = arg.split('=', 1)[1].strip('"\'')
+        elif arg == '--title':
+            # Handle --title "value" format
+            if i + 1 < len(sys.argv) and not sys.argv[i + 1].startswith('--'):
+                i += 1
+                pywebview_config['title'] = sys.argv[i].strip('"\'')
+            else:
+                print("Error: --title requires a value")
+                sys.exit(1)
+        elif arg.startswith('--width='):
+            try:
+                pywebview_config['width'] = int(arg.split('=', 1)[1])
+            except ValueError:
+                print("Error: --width must be a number")
+                sys.exit(1)
+        elif arg.startswith('--height='):
+            try:
+                pywebview_config['height'] = int(arg.split('=', 1)[1])
+            except ValueError:
+                print("Error: --height must be a number")
+                sys.exit(1)
+        elif arg.startswith('--min-width='):
+            try:
+                min_width = int(arg.split('=', 1)[1])
+                current_min_height = pywebview_config.get('min_size', (800, 600))[1]
+                pywebview_config['min_size'] = (min_width, current_min_height)
+            except ValueError:
+                print("Error: --min-width must be a number")
+                sys.exit(1)
+        elif arg.startswith('--min-height='):
+            try:
+                min_height = int(arg.split('=', 1)[1])
+                current_min_width = pywebview_config.get('min_size', (800, 600))[0]
+                pywebview_config['min_size'] = (current_min_width, min_height)
+            except ValueError:
+                print("Error: --min-height must be a number")
+                sys.exit(1)
+        elif arg == '--no-resize':
+            pywebview_config['resizable'] = False
+        elif arg == '--fullscreen':
+            pywebview_config['fullscreen'] = True
+        elif arg == '--minimized':
+            pywebview_config['minimized'] = True
+        elif arg == '--on-top':
+            pywebview_config['on_top'] = True
         elif arg.startswith('--'):
             print(f"Error: Unknown option '{arg}'")
             show_help()
@@ -521,6 +623,8 @@ def parse_arguments():
             else:
                 print("Error: Multiple URLs provided. Only one URL is allowed.")
                 sys.exit(1)
+        
+        i += 1
     
     if url is None:
         print("Error: No URL provided.")
@@ -532,17 +636,20 @@ def parse_arguments():
         print("Error: URL must start with http:// or https://")
         sys.exit(1)
     
-    return url, mode
+    return url, mode, pywebview_config
 
 
 def main():
     """
     Main entry point of the script.
     """
-    url, mode = parse_arguments()
+    url, mode, pywebview_config = parse_arguments()
     
     print(f"Launching web app: {url}")
-    launch_webapp(url, mode)
+    if pywebview_config:
+        print(f"PyWebView configuration: {pywebview_config}")
+    
+    launch_webapp(url, mode, pywebview_config)
 
 
 if __name__ == "__main__":
