@@ -3,13 +3,217 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MarkFlow Editor</title>
+    <title>New note</title>
     
     <!-- Toast UI Editor CSS -->
     <link rel="stylesheet" href="css/toastui-editor.min.css">
     <link rel="stylesheet" href="css/codemirror.min.css">
     <link rel="stylesheet" href="css/github.min.css">
     <link rel="stylesheet" href="css/prism.min.css">
+
+    <style>
+        /* Critical CSS for loading state */
+        :root {
+            --primary: #4CAF50;
+            --primary-variant: #45a049;
+            --surface: #ffffff;
+            --background: #fafafa;
+            --on-surface: #1f1f1f;
+            --on-background: #1f1f1f;
+            --outline: #79747e;
+            --outline-variant: #cac4d0;
+            --surface-variant: #f3f0f4;
+            --on-surface-variant: #49454f;
+            --shadow: rgba(0, 0, 0, 0.12);
+        }
+
+        [data-theme="dark"] {
+            --primary: #81C784;
+            --primary-variant: #66BB6A;
+            --surface: #1e1e1e;
+            --background: #121212;
+            --on-surface: #e1e1e1;
+            --on-background: #e1e1e1;
+            --outline: #938f99;
+            --outline-variant: #49454f;
+            --surface-variant: #2b2b2b;
+            --on-surface-variant: #cac4d0;
+            --shadow: rgba(0, 0, 0, 0.24);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary: #81C784;
+                --primary-variant: #66BB6A;
+                --surface: #1e1e1e;
+                --background: #121212;
+                --on-surface: #e1e1e1;
+                --on-background: #e1e1e1;
+                --outline: #938f99;
+                --outline-variant: #49454f;
+                --surface-variant: #2b2b2b;
+                --on-surface-variant: #cac4d0;
+                --shadow: rgba(0, 0, 0, 0.24);
+            }
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: var(--background);
+            color: var(--on-background);
+            overflow: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            opacity: 0;
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        .header-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+            background-color: var(--surface);
+            border-bottom: 1px solid var(--outline-variant);
+            padding: 0 16px;
+            box-shadow: 0 1px 3px var(--shadow);
+        }
+
+        .app-title {
+            display: flex;
+            align-items: center;
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--on-surface);
+        }
+
+        .app-icon {
+            margin-right: 8px;
+            font-size: 24px;
+        }
+
+        .toolbar-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .toolbar-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid var(--outline);
+            border-radius: 20px;
+            color: var(--on-surface);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+
+        .toolbar-btn:hover {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .editor-container {
+            flex: 1;
+            background-color: var(--surface);
+        }
+
+        #editor {
+            height: 100%;
+            background-color: var(--surface);
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 32px;
+            background-color: var(--surface-variant);
+            border-top: 1px solid var(--outline-variant);
+            padding: 0 16px;
+            font-size: 12px;
+            color: var(--on-surface-variant);
+        }
+
+        .status-left, .status-right {
+            display: flex;
+            gap: 16px;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--background);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--outline-variant);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            color: var(--on-background);
+            font-size: 18px;
+            font-weight: 500;
+            margin-top: 16px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    </style>
 
     <style id="dynamic-theme">
         /* Theme will be loaded dynamically */
@@ -21,14 +225,12 @@
         <header class="header-bar">
             <div class="header-left">
                 <div class="app-title">
-                    <span class="app-icon"> </span>
+                    <span class="app-icon">📝</span>
                     <span class="app-name">MarkFlow</span>
                 </div>
             </div>
             
             <div class="header-center">
-                <!-- <div class="toolbar-buttons">
-                </div> -->
             </div>
             
             <div class="header-right">
@@ -47,10 +249,11 @@
                         <span class="btn-icon">📤</span>
                         <span class="btn-text">Save As...</span>
                     </button>
-                </div>
-                
-                <div class="connection-status" id="connection-status">
-                    <span class="status-indicator online"></span>
+                    
+                    <button class="toolbar-btn" id="export-btn" title="Export">
+                        <span class="btn-icon">⬇️</span>
+                        <span class="btn-text">Export</span>
+                    </button>
                 </div>
             </div>
         </header>
@@ -99,7 +302,6 @@
         // Initialize the application directly with correct Toast UI Editor
         let editor = null;
         let currentFilePath = null;
-        let isOnline = false;
         let config = {
             theme: 'Material3-green.css',
             mode: 'auto',
@@ -116,7 +318,6 @@
                 .then(() => {
                     initializeEditor();
                     setupEventListeners();
-                    checkBackendStatus();
                     hideLoadingOverlay();
                 })
                 .catch(error => {
@@ -166,6 +367,13 @@
                         this.textarea = this.container.querySelector('#fallback-editor');
                         this.textarea.addEventListener('input', () => {
                             this.updateStats();
+                            this.updateCursorPosition();
+                        });
+                        this.textarea.addEventListener('click', () => {
+                            this.updateCursorPosition();
+                        });
+                        this.textarea.addEventListener('keyup', () => {
+                            this.updateCursorPosition();
                         });
                     }
                     
@@ -188,6 +396,18 @@
                         
                         document.getElementById('word-count').textContent = `Words: ${wordCount}`;
                         document.getElementById('char-count').textContent = `Characters: ${charCount}`;
+                    }
+                    
+                    updateCursorPosition() {
+                        if (this.textarea) {
+                            const text = this.textarea.value;
+                            const cursorPos = this.textarea.selectionStart;
+                            const lines = text.substr(0, cursorPos).split('\n');
+                            const line = lines.length;
+                            const column = lines[lines.length - 1].length + 1;
+                            
+                            document.getElementById('cursor-position').textContent = `Ln ${line}, Col ${column}`;
+                        }
                     }
                     
                     destroy() {
@@ -263,12 +483,14 @@
                         ['scrollSync']
                     ],
                     events: {
-                        change: updateStats,
-                        keydown: handleKeyDown
+                        change: updateStats
                     }
                 });
                 
                 console.log('Toast UI Editor initialized successfully');
+                
+                // Start cursor position tracking
+                setTimeout(startCursorTracking, 1000);
             } else {
                 console.error('Toast UI Editor not available');
                 createFallbackEditor();
@@ -279,6 +501,7 @@
             }
             
             updateStats();
+            updateCursorPosition();
         }
 
         // Setup event listeners
@@ -286,12 +509,12 @@
             document.getElementById('open-btn').addEventListener('click', openFile);
             document.getElementById('save-btn').addEventListener('click', saveFile);
             document.getElementById('save-as-btn').addEventListener('click', saveAsFile);
-            // Theme toggle removed
+            document.getElementById('export-btn').addEventListener('click', exportFile);
             
             // Auto-save functionality
             if (config.autosave) {
                 setInterval(() => {
-                    if (currentFilePath && isOnline) {
+                    if (currentFilePath) {
                         saveFile(true);
                     }
                 }, 30000); // Auto-save every 30 seconds
@@ -328,14 +551,20 @@
                         e.preventDefault();
                         newFile();
                         break;
+                    case 'e':
+                        if (e.ctrlKey && e.shiftKey) {
+                            e.preventDefault();
+                            exportFile();
+                        }
+                        break;
                 }
             }
         }
 
         // Handle editor keydown events
         function handleKeyDown(e) {
-            // Update cursor position
-            setTimeout(updateCursorPosition, 0);
+            // Toast UI Editor doesn't support all events consistently
+            // We'll use a different approach for cursor tracking
         }
 
         // Update statistics
@@ -348,20 +577,50 @@
             document.getElementById('char-count').textContent = `Characters: ${charCount}`;
         }
 
-        // Update cursor position
+        // Update cursor position for Toast UI Editor
         function updateCursorPosition() {
-            // This would require access to the editor's cursor position
-            // For now, we'll keep it simple
-            document.getElementById('cursor-position').textContent = 'Ln 1, Col 1';
+            try {
+                if (editor && typeof editor.getCodeMirror === 'function') {
+                    // For markdown mode
+                    const cm = editor.getCodeMirror();
+                    if (cm && cm.getCursor) {
+                        const cursor = cm.getCursor();
+                        const line = cursor.line + 1;
+                        const col = cursor.ch + 1;
+                        document.getElementById('cursor-position').textContent = `Ln ${line}, Col ${col}`;
+                        return;
+                    }
+                } else if (editor && typeof editor.getCurrentModeEditor === 'function') {
+                    // Try alternative approach
+                    const modeEditor = editor.getCurrentModeEditor();
+                    if (modeEditor && modeEditor.getCursor) {
+                        const cursor = modeEditor.getCursor();
+                        const line = cursor.line + 1;
+                        const col = cursor.ch + 1;
+                        document.getElementById('cursor-position').textContent = `Ln ${line}, Col ${col}`;
+                        return;
+                    }
+                }
+                
+                // Fallback for WYSIWYG mode or when cursor info is not available
+                document.getElementById('cursor-position').textContent = 'Editor Mode';
+            } catch (error) {
+                // Fallback - just show default
+                document.getElementById('cursor-position').textContent = 'Ln 1, Col 1';
+            }
+        }
+
+        // Periodically update cursor position (since events don't work consistently)
+        function startCursorTracking() {
+            setInterval(() => {
+                if (editor) {
+                    updateCursorPosition();
+                }
+            }, 500); // Update every 500ms
         }
 
         // File operations
         async function openFile() {
-            if (!isOnline) {
-                showNotification('Cannot open file: Backend offline', 'error');
-                return;
-            }
-            
             try {
                 const response = await fetch('/api/open', {
                     method: 'POST',
@@ -377,6 +636,7 @@
                     }
                     currentFilePath = data.filepath;
                     document.getElementById('file-path').textContent = data.filename;
+                    document.title = `${data.filename}`;
                     updateLastSaved();
                     showNotification('File opened successfully', 'success');
                 } else {
@@ -389,13 +649,6 @@
         }
 
         async function saveFile(isAutoSave = false) {
-            if (!isOnline) {
-                if (!isAutoSave) {
-                    showNotification('Cannot save: Backend offline', 'error');
-                }
-                return;
-            }
-            
             const content = editor ? editor.getMarkdown() : '';
             
             try {
@@ -414,6 +667,7 @@
                     const data = await response.json();
                     currentFilePath = data.filepath;
                     document.getElementById('file-path').textContent = data.filename;
+                    document.title = `${data.filename}`;
                     updateLastSaved();
                     if (!isAutoSave) {
                         showNotification('File saved successfully', 'success');
@@ -432,11 +686,6 @@
         }
 
         async function saveAsFile() {
-            if (!isOnline) {
-                showNotification('Cannot save: Backend offline', 'error');
-                return;
-            }
-            
             const content = editor ? editor.getMarkdown() : '';
             
             try {
@@ -454,6 +703,7 @@
                     const data = await response.json();
                     currentFilePath = data.filepath;
                     document.getElementById('file-path').textContent = data.filename;
+                    document.title = `${data.filename}`;
                     updateLastSaved();
                     showNotification('File saved successfully', 'success');
                 } else {
@@ -462,6 +712,33 @@
             } catch (error) {
                 console.error('Save as file error:', error);
                 showNotification('Error saving file', 'error');
+            }
+        }
+
+        async function exportFile() {
+            const content = editor ? editor.getMarkdown() : '';
+            
+            try {
+                const response = await fetch('/api/export', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content: content,
+                        command: 'export'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showNotification('File exported successfully', 'success');
+                } else {
+                    showNotification('Failed to export file', 'error');
+                }
+            } catch (error) {
+                console.error('Export file error:', error);
+                showNotification('Error exporting file', 'error');
             }
         }
 
@@ -475,38 +752,6 @@
             updateStats();
         }
 
-        // Theme toggle removed
-        // Backend status check
-        async function checkBackendStatus() {
-            try {
-                const response = await fetch('/api/status', {
-                    timeout: 5000
-                });
-                
-                if (response.ok) {
-                    setOnlineStatus(true);
-                } else {
-                    setOnlineStatus(false);
-                }
-            } catch (error) {
-                setOnlineStatus(false);
-            }
-            
-            // Check again in 10 seconds
-            setTimeout(checkBackendStatus, 10000);
-        }
-
-        // Update online status
-        function setOnlineStatus(online) {
-            isOnline = online;
-            const statusIndicator = document.querySelector('.status-indicator');
-            
-            if (online) {
-                statusIndicator.className = 'status-indicator online';
-            } else {
-                statusIndicator.className = 'status-indicator offline';
-            }
-        }
         // Update last saved time
         function updateLastSaved() {
             const now = new Date();
@@ -528,9 +773,10 @@
                 color: var(--on-surface);
                 padding: 12px 16px;
                 border-radius: 4px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                box-shadow: 0 2px 8px var(--shadow);
                 z-index: 1000;
                 animation: slideIn 0.3s ease-out;
+                border-left: 4px solid var(--primary);
             `;
             
             document.body.appendChild(notification);
@@ -539,7 +785,9 @@
             setTimeout(() => {
                 notification.style.animation = 'slideOut 0.3s ease-in';
                 setTimeout(() => {
-                    document.body.removeChild(notification);
+                    if (document.body.contains(notification)) {
+                        document.body.removeChild(notification);
+                    }
                 }, 300);
             }, 3000);
         }
@@ -552,21 +800,6 @@
                 overlay.style.display = 'none';
             }, 300);
         }
-
-        // Add notification animations
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideIn {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-            
-            @keyframes slideOut {
-                from { transform: translateX(0); opacity: 1; }
-                to { transform: translateX(100%); opacity: 0; }
-            }
-        `;
-        document.head.appendChild(style);
     </script>
 </body>
 </html>
