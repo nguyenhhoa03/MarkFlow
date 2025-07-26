@@ -1,13 +1,24 @@
 #!/usr/bin/env python3
 """
 Web App Launcher Script
-Usage: python3 webapp.py <URL>
-Example: python3 webapp.py http://127.0.0.1:5500
+Usage: python3 webapp.py [OPTIONS] <URL>
 
-This script detects the operating system and launches a web URL in app mode:
-- Windows: Prioritizes Google Chrome, then other Chromium-based browsers
-- Linux & macOS: Searches for Chromium-based browsers
-- Falls back to default browser if no Chromium-based browser is found
+Options:
+  --help         Show this help message and exit
+  --pywebview    Prioritize PyWebView, fallback to Chromium app mode, then default browser
+  --browser      Prioritize Chromium app mode, fallback to PyWebView, then default browser
+  --auto         Auto mode (default): Prioritize PyWebView, fallback to Chromium, then default browser
+
+Examples:
+  python3 webapp.py http://127.0.0.1:5500
+  python3 webapp.py --pywebview http://127.0.0.1:5500
+  python3 webapp.py --browser http://127.0.0.1:5500
+  python3 webapp.py --auto http://127.0.0.1:5500
+
+This script detects the operating system and launches a web URL using different methods:
+- PyWebView: Creates a native desktop app window
+- Chromium App Mode: Launches in Chromium-based browsers with --app flag
+- Default Browser: Falls back to system default browser
 """
 
 import sys
@@ -16,6 +27,61 @@ import platform
 import subprocess
 import webbrowser
 import shutil
+import argparse
+
+
+def check_pywebview():
+    """
+    Check if PyWebView is available.
+    
+    Returns:
+        bool: True if PyWebView is available, False otherwise
+    """
+    try:
+        import webview
+        return True
+    except ImportError:
+        return False
+
+
+def launch_pywebview(url, title="Web App"):
+    """
+    Launch URL using PyWebView.
+    
+    Args:
+        url (str): URL to open
+        title (str): Window title
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        import webview
+        print(f"Launching with PyWebView: {url}")
+        
+        # Configure window properties
+        webview.create_window(
+            title=title,
+            url=url,
+            width=1200,
+            height=800,
+            min_size=(800, 600),
+            resizable=True,
+            fullscreen=False,
+            minimized=False,
+            on_top=False
+        )
+        
+        # Start the webview (this will block until window is closed)
+        webview.start(debug=False)
+        return True
+        
+    except ImportError:
+        print("PyWebView not available. Install with: pip install pywebview")
+        return False
+    except Exception as e:
+        print(f"Error launching PyWebView: {e}")
+        return False
 
 
 def find_browser_executable(browser_names):
@@ -213,6 +279,47 @@ def get_macos_browsers():
     return [browser for browser in browsers if os.path.exists(browser)]
 
 
+def find_chromium_browser():
+    """
+    Find the best available Chromium-based browser based on operating system.
+    
+    Returns:
+        str or None: Path to the browser executable if found, None otherwise
+    """
+    system = platform.system().lower()
+    
+    if system == 'windows':
+        browser_names = get_windows_browsers()
+        return find_browser_executable(browser_names)
+        
+    elif system == 'darwin':  # macOS
+        # First try command-line executables
+        browser_names = get_unix_browsers()
+        browser_path = find_browser_executable(browser_names)
+        
+        # If not found, try macOS application bundles (including Homebrew)
+        if not browser_path:
+            macos_browsers = get_macos_browsers()
+            for browser in macos_browsers:
+                if os.path.exists(browser):
+                    return browser
+                    
+    elif system == 'linux':
+        # First try standard package installations
+        browser_names = get_unix_browsers()
+        browser_path = find_browser_executable(browser_names)
+        
+        # If not found, try Flatpak installations
+        if not browser_path:
+            flatpak_browsers = get_flatpak_browsers()
+            if flatpak_browsers:
+                return flatpak_browsers[0]  # Use the first available Flatpak browser
+        
+        return browser_path
+    
+    return None
+
+
 def launch_chromium_app(browser_path, url):
     """
     Launch a Chromium-based browser in app mode.
@@ -239,7 +346,7 @@ def launch_chromium_app(browser_path, url):
             '--disable-extensions'
         ])
         
-        print(f"Launching app mode with: {browser_path}")
+        print(f"Launching Chromium app mode with: {browser_path}")
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
     except Exception as e:
@@ -247,92 +354,195 @@ def launch_chromium_app(browser_path, url):
         return False
 
 
-def launch_webapp(url):
+def launch_default_browser(url):
     """
-    Main function to launch web app based on operating system.
+    Launch URL using default system browser.
     
     Args:
         url (str): URL to open
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        print("Launching with default browser...")
+        webbrowser.open(url)
+        return True
+    except Exception as e:
+        print(f"Error opening with default browser: {e}")
+        return False
+
+
+def launch_webapp(url, mode='auto'):
+    """
+    Main function to launch web app based on mode and operating system.
+    
+    Args:
+        url (str): URL to open
+        mode (str): Launch mode ('auto', 'pywebview', 'browser')
     """
     system = platform.system().lower()
     print(f"Detected operating system: {system}")
+    print(f"Launch mode: {mode}")
     
-    browser_path = None
+    success = False
     
-    if system == 'windows':
-        print("Searching for Chromium-based browsers (prioritizing Google Chrome)...")
-        browser_names = get_windows_browsers()
-        browser_path = find_browser_executable(browser_names)
+    if mode == 'pywebview':
+        # Priority: PyWebView -> Chromium -> Default Browser
+        if check_pywebview():
+            success = launch_pywebview(url)
         
-    elif system == 'darwin':  # macOS
-        print("Searching for Chromium-based browsers on macOS...")
-        # First try command-line executables
-        browser_names = get_unix_browsers()
-        browser_path = find_browser_executable(browser_names)
+        if not success:
+            print("PyWebView failed or not available, trying Chromium app mode...")
+            browser_path = find_chromium_browser()
+            if browser_path:
+                success = launch_chromium_app(browser_path, url)
         
-        # If not found, try macOS application bundles (including Homebrew)
-        if not browser_path:
-            macos_browsers = get_macos_browsers()
-            for browser in macos_browsers:
-                if os.path.exists(browser):
-                    browser_path = browser
-                    break
-                    
-    elif system == 'linux':
-        print("Searching for Chromium-based browsers on Linux...")
-        # First try standard package installations
-        browser_names = get_unix_browsers()
-        browser_path = find_browser_executable(browser_names)
+        if not success:
+            print("Chromium app mode failed, falling back to default browser...")
+            success = launch_default_browser(url)
+            
+    elif mode == 'browser':
+        # Priority: Chromium -> PyWebView -> Default Browser
+        browser_path = find_chromium_browser()
+        if browser_path:
+            success = launch_chromium_app(browser_path, url)
         
-        # If not found, try Flatpak installations
-        if not browser_path:
-            print("Checking Flatpak installations...")
-            flatpak_browsers = get_flatpak_browsers()
-            if flatpak_browsers:
-                browser_path = flatpak_browsers[0]  # Use the first available Flatpak browser
+        if not success:
+            print("Chromium app mode failed, trying PyWebView...")
+            if check_pywebview():
+                success = launch_pywebview(url)
         
+        if not success:
+            print("PyWebView failed or not available, falling back to default browser...")
+            success = launch_default_browser(url)
+            
+    else:  # mode == 'auto' or default
+        # Priority: PyWebView -> Chromium -> Default Browser
+        if check_pywebview():
+            success = launch_pywebview(url)
+        
+        if not success:
+            print("PyWebView failed or not available, trying Chromium app mode...")
+            browser_path = find_chromium_browser()
+            if browser_path:
+                success = launch_chromium_app(browser_path, url)
+        
+        if not success:
+            print("Chromium app mode failed, falling back to default browser...")
+            success = launch_default_browser(url)
+    
+    if success:
+        print("Successfully launched web app!")
     else:
-        print(f"Unsupported operating system: {system}")
+        print("Failed to launch web app with all methods.")
+        sys.exit(1)
+
+
+def show_help():
+    """
+    Display help information.
+    """
+    help_text = """
+Web App Launcher Script
+
+Usage: python3 webapp.py [OPTIONS] <URL>
+
+Options:
+  --help         Show this help message and exit
+  --pywebview    Prioritize PyWebView, fallback to Chromium app mode, then default browser
+  --browser      Prioritize Chromium app mode, fallback to PyWebView, then default browser
+  --auto         Auto mode (default): Prioritize PyWebView, fallback to Chromium, then default browser
+
+Examples:
+  python3 webapp.py http://127.0.0.1:5500
+  python3 webapp.py --pywebview http://127.0.0.1:5500
+  python3 webapp.py --browser http://127.0.0.1:5500
+  python3 webapp.py --auto http://127.0.0.1:5500
+
+Launch Methods:
+  1. PyWebView: Creates a native desktop app window using Python's webview library
+     - Requires: pip install pywebview
+     - Best for: Desktop app-like experience with native window controls
+     
+  2. Chromium App Mode: Launches in Chromium-based browsers with --app flag
+     - Supports: Chrome, Edge, Brave, Vivaldi, Opera, Chromium
+     - Best for: Web app experience without browser UI
+     
+  3. Default Browser: Falls back to system default browser
+     - Always available as final fallback
+     - Opens in regular browser tab/window
+
+Notes:
+  - The script automatically detects your operating system (Windows, macOS, Linux)
+  - On Linux, it also checks for Flatpak browser installations
+  - URLs must start with http:// or https://
+  - PyWebView installation is optional but recommended for best experience
+"""
+    print(help_text)
+
+
+def parse_arguments():
+    """
+    Parse command line arguments.
     
-    # Try to launch with Chromium-based browser in app mode
-    if browser_path:
-        print(f"Found browser: {browser_path}")
-        if launch_chromium_app(browser_path, url):
-            print("Successfully launched web app!")
-            return
+    Returns:
+        tuple: (url, mode) where mode is 'auto', 'pywebview', or 'browser'
+    """
+    if len(sys.argv) < 2:
+        print("Error: No arguments provided.")
+        show_help()
+        sys.exit(1)
+    
+    # Check for help flag
+    if '--help' in sys.argv:
+        show_help()
+        sys.exit(0)
+    
+    # Parse arguments
+    mode = 'auto'  # default mode
+    url = None
+    
+    for i, arg in enumerate(sys.argv[1:], 1):
+        if arg == '--pywebview':
+            mode = 'pywebview'
+        elif arg == '--browser':
+            mode = 'browser'
+        elif arg == '--auto':
+            mode = 'auto'
+        elif arg.startswith('--'):
+            print(f"Error: Unknown option '{arg}'")
+            show_help()
+            sys.exit(1)
         else:
-            print("Failed to launch with Chromium-based browser.")
-    else:
-        print("No Chromium-based browser found.")
+            # This should be the URL
+            if url is None:
+                url = arg
+            else:
+                print("Error: Multiple URLs provided. Only one URL is allowed.")
+                sys.exit(1)
     
-    # Fallback to default browser
-    print("Falling back to default browser...")
-    try:
-        webbrowser.open(url)
-        print("Opened with default browser.")
-    except Exception as e:
-        print(f"Error opening with default browser: {e}")
+    if url is None:
+        print("Error: No URL provided.")
+        show_help()
         sys.exit(1)
-
-
-def main():
-    """
-    Main entry point of the script.
-    """
-    if len(sys.argv) != 2:
-        print("Usage: python3 webapp.py <URL>")
-        print("Example: python3 webapp.py http://127.0.0.1:5500")
-        sys.exit(1)
-    
-    url = sys.argv[1]
     
     # Basic URL validation
     if not (url.startswith('http://') or url.startswith('https://')):
         print("Error: URL must start with http:// or https://")
         sys.exit(1)
     
+    return url, mode
+
+
+def main():
+    """
+    Main entry point of the script.
+    """
+    url, mode = parse_arguments()
+    
     print(f"Launching web app: {url}")
-    launch_webapp(url)
+    launch_webapp(url, mode)
 
 
 if __name__ == "__main__":
