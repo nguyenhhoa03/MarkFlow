@@ -1,4 +1,8 @@
 # MarkFlow
+
+## This repository is no longer maintained; the project has been continued at [github.com/hyperbIoom/MarkFlow](https://github.com/hyperbIoom/MarkFlow).
+
+
 > Just a simple note-taking app
 
 MarkFlow is a streamlined note-taking application built with [ToastUI Editor](https://ui.toast.com/tui-editor) and [Flask](https://github.com/pallets/flask/). Designed to simplify document creation and reporting compared to complex word processors, while helping you organize and manage your projects effectively.
